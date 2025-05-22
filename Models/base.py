@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field, asdict, fields
-from typing import Optional, Union, Any, ClassVar, Type, TypeVar
+from typing import Optional, Union, Any, ClassVar, Type, TypeVar, Mapping
 
 from bson import ObjectId
 from pymongo import UpdateOne, InsertOne, DeleteOne
@@ -81,7 +81,7 @@ class Base:
     @classmethod
     @time_query
     def find_one(cls: Type[T], query: dict = None, projection: dict = None,
-                 sort: list[tuple[str, int]] = None) -> Optional[dict]:
+                 sort: list[tuple[str, int]] = None) -> Optional[T]:
         """ Find a single document in the collection, optionally sorted. """
         query = query or {}
         collection = cls.__get_collection_cls()
@@ -90,10 +90,10 @@ class Base:
 
         if result:
             print(f"Found document in '{collection_name}' matching {query}" + (f" sorted by {sort}" if sort else ""))
+            return cls.from_dict(result)
         else:
             print(f"No document found in '{collection_name}' matching {query}" + (f" sorted by {sort}" if sort else ""))
-
-        return result
+            return None
 
     @classmethod
     @time_query
@@ -116,7 +116,7 @@ class Base:
 
         results = list(cursor)
         print(f"Found {len(results)} documents in '{collection_name}' matching query")
-        return results
+        return [cls.from_dict(doc) for doc in results]
 
     @classmethod
     @time_query
@@ -347,13 +347,15 @@ class Base:
         return full_dict
 
     @classmethod
-    def from_dict(cls: Type[T], data: dict) -> T:
+    def from_dict(cls: Type[T], data: Optional[Union[dict[str, Any], Mapping[str, Any]]]) -> Optional[T]:
         """
-        Create an instance of this class from a dictionary.
+        Create an instance of this class from a dictionary or dictionary-like object.
         Useful for converting database documents to model instances.
         """
-        # Filter out any keys that aren't field names in the dataclass
+        if data is None:
+            return None
 
+        # Filter out any keys that aren't field names in the dataclass
         field_names = {f.name for f in fields(cls)}
         filtered_data = {k: v for k, v in data.items() if k in field_names}
         return cls(**filtered_data)
