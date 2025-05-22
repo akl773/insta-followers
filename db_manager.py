@@ -37,7 +37,7 @@ class DBManager:
         load_dotenv()
         # Use defaults if env vars are missing
         mongo_uri = mongo_uri or os.getenv("MONGO_URI", "mongodb://localhost:27017")
-        db_name = db_name or os.getenv("DATABASE_NAME", "InstagramFollower")
+        db_name = db_name or os.getenv("DATABASE_NAME", "InstagramStat")
         try:
             self.client = MongoClient(mongo_uri)
             self.db = self.client[db_name]
