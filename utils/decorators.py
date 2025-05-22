@@ -1,8 +1,10 @@
+import os
+
 import time
 from typing import Any, Callable, TypeVar
 
 F = TypeVar('F', bound=Callable)
-print_time = False
+print_time =  os.getenv("PRINT_QUERY_TIME", "false").lower() == "true"
 
 
 def time_query(func: F) -> F:

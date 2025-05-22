@@ -17,7 +17,7 @@ class InstagramFollower:
 
     def __init__(self):
         self.client = self.initialise()
-        self.dry_run = True
+        self.dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
         self.amount = 0 if not self.dry_run else 10
 
     @staticmethod
