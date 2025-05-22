@@ -240,7 +240,7 @@ class InstagramFollower:
                     self.print_changes(existing, last)
             return
         followers = self._fetch('followers', 'user_followers', '📥')
-        following = self._fetch('following', 'user_following', '📤')
+        following = self._fetch('following', 'user_following_v1', '📤')
         print(f"\n{Fore.BLUE}💾 Updating user DB...{Style.RESET_ALL}")
         User.update_many(followers + following)
         print(f"{Fore.GREEN}✅ User database updated{Style.RESET_ALL}")
