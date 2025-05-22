@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Union
 
 from bson import ObjectId
@@ -15,7 +15,7 @@ USE_LOWERCASE_COLLECTION = True
 @dataclass
 class Base:
     """Handles MongoDB operations."""
-    _id: ObjectId = None
+    _id: ObjectId = field(default_factory=ObjectId)
 
     @property
     def id(self):
@@ -231,7 +231,7 @@ class Base:
         # Check if this document already has an _id
         if '_id' in document and document['_id'] is not None:
             # Update existing document
-            result = collection.update_one({'_id': document['_id']}, {'$set': document})
+            result = collection.update_one({'_id': document['_id']}, {'$set': document}, upsert=True)
             if result.modified_count:
                 print(f"Updated document in '{collection_name}' with ID: {document['_id']}")
             else:
