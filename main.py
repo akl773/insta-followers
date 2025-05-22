@@ -5,6 +5,7 @@ from pathlib import Path
 
 from instagrapi import Client
 from dotenv import load_dotenv
+from instagrapi.types import UserShort
 
 load_dotenv()
 
@@ -29,7 +30,14 @@ class InstagramFollower:
         # Reuse session if available, else login
         if session_file.exists():
             print("Loading existing session…")
-            client.load_settings(session_file)
+            try:
+                client.load_settings(session_file)
+                # Optional: Add a simple verification that the session is still valid
+                client.user_info_by_username(username)  # A simple API call to test
+            except Exception as e:
+                print(f"Session loading failed: {e}. Logging in again...")
+                client.login(username, password)
+                client.dump_settings(session_file)
         else:
             print("Logging in…")
             client.login(username, password)
@@ -38,16 +46,27 @@ class InstagramFollower:
 
         return client
 
+    @staticmethod
+    def _extract_user(user_short: UserShort) -> dict:
+        return {
+            "id": user_short.pk,
+            "username": user_short.username,
+            "full_name": user_short.full_name,
+            "profile_pic_url": str(user_short.profile_pic_url),
+        }
+
     def retrieve_user_connections(self):
-        client = self.client
-        user_id = str(client.user_id)
+        user_id = str(self.client.user_id)
 
         # Fetch followers and following
         print("Fetching followers…")
-        followers = list(client.user_followers(user_id, amount=0).keys())
+        followers_dict = self.client.user_followers(user_id, amount=10)
+        followers = [self._extract_user(user) for user in followers_dict.values()]
         print(f"Got {len(followers)} followers.")
+
         print("Fetching following…")
-        following = list(client.user_following(user_id, amount=0).keys())
+        following_dict = self.client.user_following(user_id, amount=10)
+        following = [self._extract_user(user) for user in following_dict.values()]
         print(f"Got {len(following)} following.")
 
         return {"followers": followers, "following": following}
