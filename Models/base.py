@@ -1,6 +1,6 @@
 import time
-from dataclasses import dataclass, field, asdict
-from typing import Optional, Union, Any
+from dataclasses import dataclass, field, asdict, fields
+from typing import Optional, Union, Any, ClassVar, Type, TypeVar
 
 from bson import ObjectId
 from pymongo import UpdateOne, InsertOne, DeleteOne
@@ -11,6 +11,8 @@ from db_manager import DBManager
 from utils.decorators import time_query
 
 USE_LOWERCASE_COLLECTION = True
+
+T = TypeVar('T', bound='Base')  # For proper typing of class methods
 
 
 @dataclass
@@ -33,12 +35,29 @@ class Base:
     def _get_collection_name(self) -> str:
         """
         Get the collection name for this class.
-        Checks for the get_collection_name () method, otherwise derives from class name.
+        Checks for the get_collection_name() method, otherwise derives from class name.
         """
         if hasattr(self, 'get_collection_name') and callable(getattr(self, 'get_collection_name')):
             return self.get_collection_name()
 
         class_name = self.__class__.__name__
+        if USE_LOWERCASE_COLLECTION:
+            return class_name.lower()
+        return class_name
+
+    @classmethod
+    def _get_collection_name_cls(cls) -> str:
+        """
+        Class method version of _get_collection_name.
+        """
+        # Check for get_collection_name as a class method
+        if hasattr(cls, 'get_collection_name') and callable(getattr(cls, 'get_collection_name')):
+
+            if not isinstance(cls.get_collection_name, classmethod):
+                return cls()._get_collection_name()
+            return cls.get_collection_name()
+
+        class_name = cls.__name__
         if USE_LOWERCASE_COLLECTION:
             return class_name.lower()
         return class_name
@@ -50,13 +69,23 @@ class Base:
             print(f"Collection '{collection_name}' does not exist - it will be created when data is inserted")
         return self.db[collection_name]
 
+    @classmethod
+    def __get_collection_cls(cls) -> Collection:
+        """Class method version of __get_collection."""
+        db = DBManager().get_instance()
+        collection_name = cls._get_collection_name_cls()
+        if collection_name not in db.list_collection_names():
+            print(f"Collection '{collection_name}' does not exist - it will be created when data is inserted")
+        return db[collection_name]
+
+    @classmethod
     @time_query
-    def find_one(self, query: dict = None, projection: dict = None,
+    def find_one(cls: Type[T], query: dict = None, projection: dict = None,
                  sort: list[tuple[str, int]] = None) -> Optional[dict]:
         """ Find a single document in the collection, optionally sorted. """
         query = query or {}
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.find_one(filter=query, projection=projection, sort=sort)
 
         if result:
@@ -66,12 +95,13 @@ class Base:
 
         return result
 
+    @classmethod
     @time_query
-    def find_many(self, query: dict = None, projection: dict | list = None,
+    def find_many(cls: Type[T], query: dict = None, projection: dict | list = None,
                   sort: list = None, limit: int = 0, skip: int = 0) -> list[dict]:
         query = query or {}
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         if isinstance(projection, list):
             projection = {field: 1 for field in projection}
 
@@ -88,19 +118,21 @@ class Base:
         print(f"Found {len(results)} documents in '{collection_name}' matching query")
         return results
 
+    @classmethod
     @time_query
-    def count_documents(self, query: dict = None) -> int:
+    def count_documents(cls, query: dict = None) -> int:
         query = query or {}
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         count = collection.count_documents(query)
         print(f"Counted {count} documents in '{collection_name}' matching query")
         return count
 
+    @classmethod
     @time_query
-    def update_one(self, query: dict, update: dict, upsert: bool = False) -> UpdateResult:
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+    def update_one(cls, query: dict, update: dict, upsert: bool = False) -> UpdateResult:
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.update_one(query, update, upsert=upsert)
 
         if result.modified_count:
@@ -124,13 +156,14 @@ class Base:
         # update specified fields except meta fields
         return {k: params[k] for k in update_fields if k in params and k not in ["_id", "c", "deleted"]}
 
+    @classmethod
     @time_query
-    def update_many(self, entities: list["Base"], query_fields=None, update_fields=None, upsert=True, session=None):
+    def update_many(cls, entities: list["Base"], query_fields=None, update_fields=None, upsert=True, session=None):
         """
         Update or insert multiple entities in a single bulk operation.
         """
         if not entities:
-            print(f"No entities provided for bulk update in '{self.__class__.__name__}'")
+            print(f"No entities provided for bulk update in '{cls.__name__}'")
             return None
 
         # Default query fields is _id
@@ -149,7 +182,7 @@ class Base:
             query_params = {key: params[key] for key in query_fields if key in params}
 
             # Get update fields using helper method
-            update_values = self._get_update_fields(params, update_fields)
+            update_values = cls._get_update_fields(params, update_fields)
 
             # Add updated timestamp (Unix timestamp)
             update_values['u'] = current_time
@@ -167,21 +200,22 @@ class Base:
             )
 
         # Get collection
-        collection = self.__get_collection()
+        collection = cls.__get_collection_cls()
 
         # Execute bulk write and print results
         result = collection.bulk_write(db_updates, ordered=False, session=session)
         print(
-            f"Bulk operation completed on '{self.__class__.__name__}': "
+            f"Bulk operation completed on '{cls.__name__}': "
             f"{result.upserted_count} inserted, "
             f"{result.modified_count} modified"
         )
 
         return result
 
+    @classmethod
     @time_query
     def bulk_write(
-            self,
+            cls,
             operations: list[Union[UpdateOne, InsertOne, DeleteOne]],
             ordered: bool = True
     ) -> BulkWriteResult | None:
@@ -189,8 +223,8 @@ class Base:
             print("No operations provided for bulk update")
             return None
 
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.bulk_write(operations, ordered=ordered)
 
         print(
@@ -200,32 +234,35 @@ class Base:
 
         return result
 
+    @classmethod
     @time_query
-    def insert_one(self, document: dict) -> InsertOneResult:
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+    def insert_one(cls, document: dict) -> InsertOneResult:
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.insert_one(document)
 
         print(f"Inserted document into '{collection_name}' with ID: {result.inserted_id}")
         return result
 
+    @classmethod
     @time_query
-    def insert_many(self, documents: list[dict]) -> list:
+    def insert_many(cls, documents: list[dict]) -> list:
         if not documents:
             print("No documents provided for insert_many")
             return []
 
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.insert_many(documents)
 
         print(f"Inserted {len(result.inserted_ids)} documents into '{collection_name}'")
         return result.inserted_ids
 
+    @classmethod
     @time_query
-    def delete_one(self, query: dict) -> DeleteResult:
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+    def delete_one(cls, query: dict) -> DeleteResult:
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.delete_one(query)
 
         if result.deleted_count:
@@ -235,10 +272,11 @@ class Base:
 
         return result
 
+    @classmethod
     @time_query
-    def delete_many(self, query: dict) -> DeleteResult:
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+    def delete_many(cls, query: dict) -> DeleteResult:
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         result = collection.delete_many(query)
 
         if result.deleted_count:
@@ -248,24 +286,26 @@ class Base:
 
         return result
 
+    @classmethod
     @time_query
-    def aggregate(self, pipeline: list[dict], **kwargs) -> list[dict]:
+    def aggregate(cls, pipeline: list[dict], **kwargs) -> list[dict]:
         if not pipeline:
             print("No pipeline provided for aggregation")
             return []
 
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         results = list(collection.aggregate(pipeline, **kwargs))
 
         print(f"Aggregation completed on '{collection_name}' with {len(results)} results")
         return results
 
+    @classmethod
     @time_query
-    def distinct(self, key: str, query: dict = None) -> list:
+    def distinct(cls, key: str, query: dict = None) -> list:
         query = query or {}
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
+        collection = cls.__get_collection_cls()
+        collection_name = cls._get_collection_name_cls()
         results = collection.distinct(key, query)
         print(f"Found {len(results)} distinct values for '{key}' in '{collection_name}'")
         return results
@@ -299,14 +339,24 @@ class Base:
             return result
 
     def get_dict(self) -> dict:
-        # Use dataclasses.asdict to properly convert nested dataclasses too
-
         full_dict = asdict(self)
         # Remove the db attribute
         if 'db' in full_dict:
             del full_dict['db']
 
         return full_dict
+
+    @classmethod
+    def from_dict(cls: Type[T], data: dict) -> T:
+        """
+        Create an instance of this class from a dictionary.
+        Useful for converting database documents to model instances.
+        """
+        # Filter out any keys that aren't field names in the dataclass
+
+        field_names = {f.name for f in fields(cls)}
+        filtered_data = {k: v for k, v in data.items() if k in field_names}
+        return cls(**filtered_data)
 
     def close(self):
         if hasattr(self, 'client') and self.client:
