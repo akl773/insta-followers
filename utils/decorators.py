@@ -2,6 +2,7 @@ import time
 from typing import Any, Callable, TypeVar
 
 F = TypeVar('F', bound=Callable)
+print_time = False
 
 
 def time_query(func: F) -> F:
@@ -31,7 +32,8 @@ def time_query(func: F) -> F:
         else:
             collection_name = "unknown"
 
-        print(f"{func.__name__} on collection '{collection_name}' took {end_time - start_time:.4f} seconds")
+        if print_time:
+            print(f"{func.__name__} on collection '{collection_name}' took {end_time - start_time:.4f} seconds")
         return result
 
     return wrapper

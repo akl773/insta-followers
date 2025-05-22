@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import json
 from pathlib import Path
@@ -18,7 +17,7 @@ class InstagramFollower:
 
     def __init__(self):
         self.client = self.initialise()
-        self.dry_run = False
+        self.dry_run = True
         self.amount = 0 if not self.dry_run else 10
 
     @staticmethod
@@ -38,10 +37,9 @@ class InstagramFollower:
             print("Loading existing session…")
             try:
                 client.load_settings(session_file)
-                # Optional: Add a simple verification that the session is still valid
-                client.user_info_by_username(username)  # A simple API call to test
-            except Exception as e:
-                print(f"Session loading failed: {e}. Logging in again...")
+                client.user_following(str(client.user_id), amount=1)
+            except Exception as se:
+                print(f"Session loading failed: {se}. Logging in again...")
                 client.login(username, password)
                 client.dump_settings(session_file)
         else:
@@ -194,13 +192,13 @@ class InstagramFollower:
         # Update user collection
         User().update_many(followers + following)
 
-        # Get previous report for comparison
+        # Get a previous report for comparison
         last_report = self.previous_generated_report()
 
-        # Generate new report
+        # Generate a new report
         report = self.generate_report(followers, following)
 
-        # Analyze and update report with comparison data
+        # Analyze and update a report with comparison data
         if last_report:
             self.analyse_reports(report, last_report)
         else:
@@ -214,4 +212,3 @@ if __name__ == "__main__":
         print("\nDone! Instagram follower analysis complete.")
     except Exception as e:
         print(f"\nError: {e}")
-        raise  # Remove this in production if you don't want stack traces
