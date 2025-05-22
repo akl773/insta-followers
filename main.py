@@ -7,7 +7,9 @@ from instagrapi import Client
 from dotenv import load_dotenv
 from instagrapi.types import UserShort
 
+from Models.report import Report
 from Models.user import User
+from utils.time import get_morning_time
 
 load_dotenv()
 
@@ -49,29 +51,34 @@ class InstagramFollower:
         return client
 
     @staticmethod
-    def _extract_user(user_short: UserShort) -> dict:
-        return {
-            "id": user_short.pk,
-            "username": user_short.username,
-            "full_name": user_short.full_name,
-            "profile_pic_url": str(user_short.profile_pic_url),
-        }
+    def _extract_user(user_short: UserShort) -> User:
+        return User(
+            _id=user_short.pk,
+            username=user_short.username,
+            full_name=user_short.full_name,
+            profile_pic_url=str(user_short.profile_pic_url),
+        )
 
-    def retrieve_user_connections(self):
+    def get_followers(self):
         user_id = str(self.client.user_id)
 
         # Fetch followers and following
         print("Fetching followers…")
-        followers_dict = self.client.user_followers(user_id, amount=10)
+        followers_dict = self.client.user_followers(user_id, amount=0)
         followers = [self._extract_user(user) for user in followers_dict.values()]
         print(f"Got {len(followers)} followers.")
 
+        return followers
+
+    def get_following(self):
+        user_id = str(self.client.user_id)
+
         print("Fetching following…")
-        following_dict = self.client.user_following(user_id, amount=10)
+        following_dict = self.client.user_following(user_id, amount=0)
         following = [self._extract_user(user) for user in following_dict.values()]
         print(f"Got {len(following)} following.")
 
-        return {"followers": followers, "following": following}
+        return following
 
     @staticmethod
     def save_connections(state: dict, filename: str = "state.json"):
@@ -79,12 +86,28 @@ class InstagramFollower:
             json.dump(state, f, indent=2)
         print("Saved state.json")
 
+    @staticmethod
+    def generate_report(followers: list[User], following: list[User]):
+        report = Report(
+            generated_at=get_morning_time(),
+            num_followers=len(followers),
+            num_following=len(following),
+            users=[user.get_dict() for user in followers + following],
+        )
+        report.save()
+
     def run(self):
-        state = self.retrieve_user_connections()
-        self.save_connections(state)
+        current_dt = get_morning_time()
+        if Report.find_one({"generated_at": current_dt}):
+            print("Report already generated for today.")
+            return
+
+        followers: list[User] = self.get_followers()
+        following: list[User] = self.get_following()
+        User.update_many(followers + following)
+        self.generate_report(followers, following)
 
 
 if __name__ == "__main__":
-    User
-    # f = InstagramFollower()
-    # f.run()
+    f = InstagramFollower()
+    f.run()
