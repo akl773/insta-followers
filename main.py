@@ -7,6 +7,8 @@ from instagrapi import Client
 from dotenv import load_dotenv
 from instagrapi.types import UserShort
 
+from Models.user import User
+
 load_dotenv()
 
 
@@ -83,5 +85,6 @@ class InstagramFollower:
 
 
 if __name__ == "__main__":
-    f = InstagramFollower()
-    f.run()
+    User
+    # f = InstagramFollower()
+    # f.run()
