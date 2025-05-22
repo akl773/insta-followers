@@ -1,351 +1,239 @@
-import json
 import os
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
-from colorama import init, Fore, Style
-from dotenv import load_dotenv
 from instagrapi import Client
+from dotenv import load_dotenv
 from instagrapi.types import UserShort
+from colorama import init, Fore, Style
 
 from Models.report import Report
 from Models.user import User
 from utils.time import get_morning_time
 
 init()
-
 load_dotenv()
 
 
 class InstagramFollower:
-
     def __init__(self):
-        print(f"{Fore.CYAN}╔══════════════════════════════════════╗{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}║     Instagram Follower Analyzer      ║{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}╚══════════════════════════════════════╝{Style.RESET_ALL}")
-
+        self._print_header()
         self.start_time = time.time()
-        self.client = self.initialise()
-        self.dry_run = os.getenv("DRY_RUN", "false").lower() in ('true', 'yes', '1', 'y')
-        self.force_run = os.getenv("FORCE_RUN", "false").lower() in ('true', 'yes', '1', 'y')
-
+        self.client = self._init_client()
+        self.dry_run = self._get_choice("Enable dry run mode? (Limited to 10 users) [y/N]: ")
+        self.force_run = self._get_choice("Force regenerate today's report if it exists? [y/N]: ")
         if self.dry_run:
             print(f"{Fore.YELLOW}⚠️  DRY RUN MODE ENABLED - Limited to 10 users{Style.RESET_ALL}")
         if self.force_run:
             print(f"{Fore.YELLOW}⚠️  FORCE RUN MODE ENABLED - Will regenerate today's report{Style.RESET_ALL}")
-
-        self.amount = 0 if not self.dry_run else 10
+        self.amount = 10 if self.dry_run else 0
 
     @staticmethod
-    def initialise():
-        username = os.getenv("INSTAGRAM_USERNAME")
-        password = os.getenv("INSTAGRAM_PASSWORD")
-        if not username or not password:
-            print(
-                f"{Fore.RED}Error: INSTAGRAM_USERNAME and INSTAGRAM_PASSWORD must be set in .env file{Style.RESET_ALL}")
+    def _print_header():
+        print(f"{Fore.CYAN}╔{'═' * 38}╗{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}║{' Instagram Follower Analyzer ':^38}║{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}╚{'═' * 38}╝{Style.RESET_ALL}")
+
+    @staticmethod
+    def _get_choice(prompt: str, default: bool = False) -> bool:
+        while True:
+            resp = input(f"{Fore.YELLOW}{prompt}{Style.RESET_ALL}").strip().lower()
+            if not resp:
+                return default
+            if resp in ('y', 'yes'):
+                return True
+            if resp in ('n', 'no'):
+                return False
+            print(f"{Fore.RED}Invalid input. Enter 'y' or 'n'.{Style.RESET_ALL}")
+
+    def _init_client(self) -> Client:
+        user, pwd = os.getenv('INSTAGRAM_USERNAME'), os.getenv('INSTAGRAM_PASSWORD')
+        if not user or not pwd:
+            print(f"{Fore.RED}Credentials missing in .env{Style.RESET_ALL}")
             exit(1)
-
         client = Client()
-        session_file = Path(f"session/{username}_session.json")
-        session_file.parent.mkdir(exist_ok=True)
+        sf = Path(f"session/{user}_session.json");
+        sf.parent.mkdir(exist_ok=True)
 
-        # Reuse session if available, else login
-        if session_file.exists():
-            print(f"{Fore.BLUE}🔑 Loading existing session for @{username}...{Style.RESET_ALL}")
+        def do_login():
+            client.login(user, pwd)
+            client.dump_settings(sf)
+
+        if sf.exists():
+            print(f"{Fore.BLUE}🔑 Loading session for @{user}...{Style.RESET_ALL}")
             try:
-                client.load_settings(session_file)
+                client.load_settings(sf)
                 client.user_following(str(client.user_id), amount=1)
-                print(f"{Fore.GREEN}✅ Session loaded successfully{Style.RESET_ALL}")
-            except Exception as se:
-                print(f"{Fore.RED}❌ Session loading failed: {se}{Style.RESET_ALL}")
-                print(f"{Fore.BLUE}🔑 Logging in to Instagram...{Style.RESET_ALL}")
-                client.login(username, password)
-                client.dump_settings(session_file)
-                print(f"{Fore.GREEN}✅ New session saved{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}✅ Session loaded{Style.RESET_ALL}")
+            except Exception:
+                print(f"{Fore.RED}Session failed, logging in...{Style.RESET_ALL}")
+                do_login()
         else:
-            print(f"{Fore.BLUE}🔑 First-time login to Instagram...{Style.RESET_ALL}")
-            client.login(username, password)
-            client.dump_settings(session_file)
-            print(f"{Fore.GREEN}✅ Session saved successfully{Style.RESET_ALL}")
-
+            print(f"{Fore.BLUE}🔑 First-time login...{Style.RESET_ALL}")
+            do_login()
+            print(f"{Fore.GREEN}✅ Session saved{Style.RESET_ALL}")
         return client
 
-    @staticmethod
-    def _extract_user(user_short: UserShort) -> User:
-        return User(
-            _id=user_short.pk,
-            username=user_short.username,
-            full_name=user_short.full_name,
-            profile_pic_url=str(user_short.profile_pic_url),
-        )
-
-    def get_followers(self):
-        user_id = str(self.client.user_id)
-
-        # Fetch followers
-        print(f"\n{Fore.BLUE}📥 Fetching followers...{Style.RESET_ALL}")
-        start_time = time.time()
-        followers_dict = self.client.user_followers(user_id, amount=self.amount)
-        followers = [self._extract_user(user) for user in followers_dict.values()]
-        duration = time.time() - start_time
-
+    def _fetch(self, name: str, method: str, emoji: str) -> List[User]:
+        print(f"\n{Fore.BLUE}{emoji} Fetching {name}...{Style.RESET_ALL}")
+        t0 = time.time()
+        data = getattr(self.client, method)(str(self.client.user_id), amount=self.amount)
+        users = [self._to_user(u) for u in data.values()]
         print(
-            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(followers)}{Fore.GREEN} followers in {Fore.YELLOW}{duration:.2f}{Fore.GREEN} seconds{Style.RESET_ALL}")
-
-        return followers
-
-    def get_following(self):
-        user_id = str(self.client.user_id)
-
-        # Fetch following
-        print(f"\n{Fore.BLUE}📤 Fetching following...{Style.RESET_ALL}")
-        start_time = time.time()
-        following_dict = self.client.user_following(user_id, amount=self.amount)
-        following = [self._extract_user(user) for user in following_dict.values()]
-        duration = time.time() - start_time
-
-        print(
-            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(following)}{Fore.GREEN} following in {Fore.YELLOW}{duration:.2f}{Fore.GREEN} seconds{Style.RESET_ALL}")
-
-        return following
+            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(users)}{Fore.GREEN} {name} in {Fore.YELLOW}{time.time() - t0:.2f}s{Style.RESET_ALL}")
+        return users
 
     @staticmethod
-    def save_connections(state: dict, filename: str = "state.json"):
-        with open(filename, "w") as f:
-            json.dump(state, f, indent=2)
-        print(f"{Fore.GREEN}✅ Saved state to {filename}{Style.RESET_ALL}")
+    def _to_user(u: UserShort) -> User:
+        return User(_id=u.pk, username=u.username, full_name=u.full_name, profile_pic_url=str(u.profile_pic_url))
 
     @staticmethod
-    def generate_report(followers: List[User], following: List[User]):
-        """
-        Generate a report containing follower and following information.
-        Categorizes each user as a follower, following, or both.
-        """
+    def get_relationship_counts(followers: List[User], following: List[User]) -> Dict[str, int]:
+        fids = {u.id for u in followers}
+        gids = {u.id for u in following}
+        return {
+            "followers": len(followers),
+            "following": len(following),
+            "mutual": len(fids & gids),
+            "followers_only": len(fids - gids),
+            "following_only": len(gids - fids)
+        }
+
+    @staticmethod
+    def generate_report(followers: List[User], following: List[User]) -> Report:
         print(f"\n{Fore.BLUE}📊 Generating report...{Style.RESET_ALL}")
-        start_time = time.time()
-
-        # Get sets of IDs for efficient operations
-        follower_ids = {user.id for user in followers}
-        following_ids = {user.id for user in following}
-
-        # Get counts of different relationship types
-        mutual_count = len(follower_ids.intersection(following_ids))
-        followers_only = len(follower_ids - following_ids)
-        following_only = len(following_ids - follower_ids)
-
-        # Create a dictionary to deduplicate users
-        unique_users = {}
-
-        # Process all users
-        for user in followers + following:
-            user_id = user.id
-            if user_id not in unique_users:
-                user_dict = user.get_dict()
-                user_dict['type'] = []
-                unique_users[user_id] = user_dict
-
-            # Add type information
-            if user_id in follower_ids and 'follower' not in unique_users[user_id]['type']:
-                unique_users[user_id]['type'].append('follower')
-            if user_id in following_ids and 'following' not in unique_users[user_id]['type']:
-                unique_users[user_id]['type'].append('following')
-
-        # Create the report
+        t0 = time.time()
+        fids, gids = {u.id for u in followers}, {u.id for u in following}
+        users: Dict[int, Dict] = {}
+        for u in followers + following:
+            d = users.setdefault(u.id, u.get_dict() | {'type': []})
+            if u.id in fids and 'follower' not in d['type']:
+                d['type'].append('follower')
+            if u.id in gids and 'following' not in d['type']:
+                d['type'].append('following')
         report = Report(
             generated_at=get_morning_time(),
             num_followers=len(followers),
             num_following=len(following),
-            users=list(unique_users.values()),
+            users=list(users.values())
         )
         report.save()
-
-        duration = time.time() - start_time
-
-        # Print report summary
-        print(f"{Fore.GREEN}✅ Report generated in {Fore.YELLOW}{duration:.2f}{Fore.GREEN} seconds{Style.RESET_ALL}")
-        print(f"\n{Fore.CYAN}┌─────────────── Report Summary ───────────────┐{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Date: {report.generated_at.strftime('%Y-%m-%d')}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Total Followers: {Fore.YELLOW}{len(followers)}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Total Following: {Fore.YELLOW}{len(following)}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Mutual Connections: {Fore.GREEN}{mutual_count}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Followers Only: {Fore.BLUE}{followers_only}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}│{Style.RESET_ALL} Following Only: {Fore.MAGENTA}{following_only}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}└──────────────────────────────────────────────┘{Style.RESET_ALL}")
-
+        print(f"{Fore.GREEN}✅ Report generated in {Fore.YELLOW}{time.time() - t0:.2f}s{Style.RESET_ALL}")
         return report
 
-    @staticmethod
-    def previous_generated_report():
-        return Report.find_one({}, sort=[("generated_at", -1)])
+    def print_summary(self, report: Report, counts: Dict[str, int] = None):
+        if counts is None:
+            counts = self.get_relationship_counts([
+                u for u in report.users if 'follower' in u.get('type', [])
+            ], [
+                u for u in report.users if 'following' in u.get('type', [])
+            ])
+        content = [
+            f"Date: {report.generated_at:%Y-%m-%d}",
+            f"Total Followers: {Fore.YELLOW}{counts['followers']}{Style.RESET_ALL}",
+            f"Total Following: {Fore.YELLOW}{counts['following']}{Style.RESET_ALL}",
+            f"Mutual: {Fore.GREEN}{counts['mutual']}{Style.RESET_ALL}",
+            f"Followers Only: {Fore.BLUE}{counts['followers_only']}{Style.RESET_ALL}",
+            f"Following Only: {Fore.MAGENTA}{counts['following_only']}{Style.RESET_ALL}"
+        ]
+        self._print_box("Report Summary", content)
 
-    @staticmethod
-    def analyse_reports(report: Report, last_report: Report):
-        """Analyze the differences between the current report and the previous report."""
-        if not last_report:
-            print(f"{Fore.YELLOW}ℹ️ This is the first report - no comparison available.{Style.RESET_ALL}")
+    def print_changes(self, report: Report, last: Report):
+        stats = getattr(report, 'stats', {})
+        if not stats:
+            print(f"{Fore.YELLOW}ℹ️ No change data.{Style.RESET_ALL}")
             return
+        content = []
+        changed = [
+            ('new_followers_count', '📈 New Followers', Fore.GREEN, report.new_followers),
+            ('lost_followers_count', '📉 Lost Followers', Fore.RED, getattr(report, 'lost_followers', [])),
+            ('new_following_count', '➕ New Following', Fore.GREEN, report.new_following),
+            ('unfollowed_count', '➖ Unfollowed', Fore.RED, getattr(report, 'unfollowed', []))
+        ]
+        content.append(f"Previous: {stats.get('previous_report_date')}")
+        for key, label, color, lst in changed:
+            cnt = stats.get(key, 0)
+            if cnt:
+                content.append(f"{color}{label}: {cnt}{Style.RESET_ALL}")
+                for i, uid in enumerate(lst[:5], 1):
+                    user = (report if 'new' in key else last).get_user_by_id(uid)
+                    content.append(f"  {i}. @{user.get('username')} ({user.get('full_name')})")
+                if len(lst) > 5:
+                    content.append(f"  ... and {len(lst) - 5} more")
+            else:
+                content.append(f"{Fore.YELLOW}{label}: 0{Style.RESET_ALL}")
+        for net_key, label in [('net_follower_change', '📊 Net follower change'),
+                               ('net_following_change', '📊 Net following change')]:
+            val = stats.get(net_key, 0)
+            col = Fore.GREEN if val > 0 else Fore.RED if val < 0 else Fore.YELLOW
+            prefix = '+' if val > 0 else ''
+            content.append(f"{col}{label}: {prefix}{val}{Style.RESET_ALL}")
+        self._print_box("Changes Analysis", content)
 
-        print(
-            f"\n{Fore.BLUE}🔍 Analyzing changes since last report ({last_report.generated_at.strftime('%Y-%m-%d')})...{Style.RESET_ALL}")
-
-        # Calculate differences using the helper methods
-        current_followers = report.get_user_ids_by_type('follower')
-        current_following = report.get_user_ids_by_type('following')
-        previous_followers = last_report.get_user_ids_by_type('follower')
-        previous_following = last_report.get_user_ids_by_type('following')
-
-        # Calculate differences
-        new_followers = current_followers - previous_followers
-        lost_followers = previous_followers - current_followers
-        new_following = current_following - previous_following
-        unfollowed = previous_following - current_following
-
-        # Update report with results
-        report.new_followers = list(new_followers)
-        report.lost_followers = list(lost_followers)
-        report.new_following = list(new_following)
-        report.unfollowed = list(unfollowed)
-
-        # Create stats dictionary
+    def analyse_reports(self, report: Report, last: Report):
+        print(f"\n{Fore.BLUE}🔍 Analyzing since {last.generated_at:%Y-%m-%d}...{Style.RESET_ALL}")
+        curr_f = set(report.get_user_ids_by_type('follower'))
+        prev_f = set(last.get_user_ids_by_type('follower'))
+        curr_g = set(report.get_user_ids_by_type('following'))
+        prev_g = set(last.get_user_ids_by_type('following'))
+        report.new_followers = list(curr_f - prev_f)
+        report.lost_followers = list(prev_f - curr_f)
+        report.new_following = list(curr_g - prev_g)
+        report.unfollowed = list(prev_g - curr_g)
         report.stats = {
-            "new_followers_count": len(new_followers),
-            "lost_followers_count": len(lost_followers),
-            "new_following_count": len(new_following),
-            "unfollowed_count": len(unfollowed),
-            "net_follower_change": len(new_followers) - len(lost_followers),
-            "net_following_change": len(new_following) - len(unfollowed),
-            "previous_report_date": last_report.generated_at.strftime('%Y-%m-%d')
+            'new_followers_count': len(report.new_followers),
+            'lost_followers_count': len(report.lost_followers),
+            'new_following_count': len(report.new_following),
+            'unfollowed_count': len(report.unfollowed),
+            'net_follower_change': len(report.new_followers) - len(report.lost_followers),
+            'net_following_change': len(report.new_following) - len(report.unfollowed),
+            'previous_report_date': last.generated_at.strftime('%Y-%m-%d')
         }
-
-        # Save updated report
         report.save()
+        print(f"{Fore.GREEN}✅ Analysis complete{Style.RESET_ALL}")
 
-        # Print analysis
-        print(f"\n{Fore.CYAN}┌─────────────── Changes Analysis ───────────────┐{Style.RESET_ALL}")
-
-        # New followers
-        if new_followers:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.GREEN}📈 New Followers: {len(new_followers)}{Style.RESET_ALL}")
-            for i, user_id in enumerate(new_followers, 1):
-                user = report.get_user_by_id(user_id)
-                if user:
-                    print(
-                        f"{Fore.CYAN}│{Style.RESET_ALL}   {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
-                if i >= 5 and len(new_followers) > 5:
-                    print(f"{Fore.CYAN}│{Style.RESET_ALL}   ... and {len(new_followers) - 5} more")
-                    break
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}📈 No new followers{Style.RESET_ALL}")
-
-        # Lost followers
-        if lost_followers:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.RED}📉 Lost Followers: {len(lost_followers)}{Style.RESET_ALL}")
-            for i, user_id in enumerate(lost_followers, 1):
-                user = last_report.get_user_by_id(user_id)
-                if user:
-                    print(
-                        f"{Fore.CYAN}│{Style.RESET_ALL}   {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
-                if i >= 5 and len(lost_followers) > 5:
-                    print(f"{Fore.CYAN}│{Style.RESET_ALL}   ... and {len(lost_followers) - 5} more")
-                    break
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}📉 No lost followers{Style.RESET_ALL}")
-
-        # New following
-        if new_following:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.GREEN}➕ New Following: {len(new_following)}{Style.RESET_ALL}")
-            for i, user_id in enumerate(new_following, 1):
-                user = report.get_user_by_id(user_id)
-                if user:
-                    print(
-                        f"{Fore.CYAN}│{Style.RESET_ALL}   {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
-                if i >= 5 and len(new_following) > 5:
-                    print(f"{Fore.CYAN}│{Style.RESET_ALL}   ... and {len(new_following) - 5} more")
-                    break
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}➕ No new following{Style.RESET_ALL}")
-
-        # Unfollowed
-        if unfollowed:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.RED}➖ Unfollowed: {len(unfollowed)}{Style.RESET_ALL}")
-            for i, user_id in enumerate(unfollowed, 1):
-                user = last_report.get_user_by_id(user_id)
-                if user:
-                    print(
-                        f"{Fore.CYAN}│{Style.RESET_ALL}   {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
-                if i >= 5 and len(unfollowed) > 5:
-                    print(f"{Fore.CYAN}│{Style.RESET_ALL}   ... and {len(unfollowed) - 5} more")
-                    break
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}➖ No unfollowed users{Style.RESET_ALL}")
-
-        # Net changes
-        net_follower_change = len(new_followers) - len(lost_followers)
-        net_following_change = len(new_following) - len(unfollowed)
-
-        if net_follower_change > 0:
-            print(
-                f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.GREEN}📊 Net follower change: +{net_follower_change}{Style.RESET_ALL}")
-        elif net_follower_change < 0:
-            print(
-                f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.RED}📊 Net follower change: {net_follower_change}{Style.RESET_ALL}")
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}📊 Net follower change: 0{Style.RESET_ALL}")
-
-        if net_following_change > 0:
-            print(
-                f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.GREEN}📊 Net following change: +{net_following_change}{Style.RESET_ALL}")
-        elif net_following_change < 0:
-            print(
-                f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.RED}📊 Net following change: {net_following_change}{Style.RESET_ALL}")
-        else:
-            print(f"{Fore.CYAN}│{Style.RESET_ALL} {Fore.YELLOW}📊 Net following change: 0{Style.RESET_ALL}")
-
-        print(f"{Fore.CYAN}└───────────────────────────────────────────────┘{Style.RESET_ALL}")
+    @staticmethod
+    def _print_box(title: str, content: List[str], color=Fore.CYAN):
+        width = max(len(line) for line in content + [title]) + 6
+        print(f"\n{color}┌{'─' * (width - 2)}┐{Style.RESET_ALL}")
+        print(f"{color}│{title.center(width - 2)}│{Style.RESET_ALL}")
+        print(f"{color}├{'─' * (width - 2)}┤{Style.RESET_ALL}")
+        for line in content:
+            print(f"{color}│ {line}{' ' * (width - len(line) - 3)}│{Style.RESET_ALL}")
+        print(f"{color}└{'─' * (width - 2)}┘{Style.RESET_ALL}")
 
     def run(self):
-        current_dt = get_morning_time()
-        existing_report = Report.find_one({"generated_at": current_dt})
-
-        if existing_report and not self.force_run and not self.dry_run:
-            print(f"\n{Fore.YELLOW}ℹ️ Report already exists for {current_dt.strftime('%Y-%m-%d')}.{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}ℹ️ Use FORCE_RUN=true to regenerate the report.{Style.RESET_ALL}")
+        today = get_morning_time()
+        existing = Report.find_one({"generated_at": today})
+        if existing and not self.force_run and not self.dry_run:
+            print(f"\n{Fore.YELLOW}ℹ️ Report exists for {today:%Y-%m-%d}{Style.RESET_ALL}")
+            if self._get_choice("View existing? [Y/n]: ", True):
+                last = Report.find_one({"generated_at": {"$lt": today}}, sort=[("generated_at", -1)])
+                self.print_summary(existing)
+                if last:
+                    self.print_changes(existing, last)
             return
-
-        # Get followers and following
-        followers: List[User] = self.get_followers()
-        following: List[User] = self.get_following()
-
-        # Update user collection
-        print(f"\n{Fore.BLUE}💾 Updating user database...{Style.RESET_ALL}")
+        followers = self._fetch('followers', 'user_followers', '📥')
+        following = self._fetch('following', 'user_following', '📤')
+        print(f"\n{Fore.BLUE}💾 Updating user DB...{Style.RESET_ALL}")
         User.update_many(followers + following)
-        print(f"{Fore.GREEN}✅ User database updated with {len(followers) + len(following)} entries{Style.RESET_ALL}")
-
-        # Get a previous report for comparison
-        last_report = self.previous_generated_report()
-
-        # Generate a new report
         report = self.generate_report(followers, following)
-
-        # Analyze and update a report with comparison data
-        if last_report:
-            self.analyse_reports(report, last_report)
-        else:
-            print(f"\n{Fore.YELLOW}ℹ️ This is the first report - no comparison data available.{Style.RESET_ALL}")
-
-        # Calculate total runtime
-        total_time = time.time() - self.start_time
-        print(
-            f"\n{Fore.GREEN}✅ Done! Analysis completed in {Fore.YELLOW}{total_time:.2f}{Fore.GREEN} seconds{Style.RESET_ALL}")
+        counts = self.get_relationship_counts(followers, following)
+        self.print_summary(report, counts)
+        last = Report.find_one({}, sort=[("generated_at", -1)])
+        if last:
+            self.analyse_reports(report, last)
+            self.print_changes(report, last)
+        total = time.time() - self.start_time
+        print(f"\n{Fore.GREEN}✅ Done in {Fore.YELLOW}{total:.2f}s{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
     try:
-        f = InstagramFollower()
-        f.run()
+        InstagramFollower().run()
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}⚠️ Process interrupted by user{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}⚠️ Interrupted by user{Style.RESET_ALL}")
     except Exception as e:
         print(f"\n{Fore.RED}❌ Error: {e}{Style.RESET_ALL}")
-        raise  # Remove this in production if you don't want stack traces
+        raise
