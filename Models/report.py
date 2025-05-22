@@ -1,5 +1,3 @@
-# First, update your Report class (Models/report.py):
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Set, Optional
@@ -21,7 +19,7 @@ class Report(Base):
     num_following: int = 0
     users: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Analysis results - differences from previous report
+    # Analysis results - differences from a previous report
     new_followers: List[str] = field(default_factory=list)
     lost_followers: List[str] = field(default_factory=list)
     new_following: List[str] = field(default_factory=list)
@@ -36,7 +34,7 @@ class Report(Base):
 
     def get_user_ids_by_type(self, user_type: str) -> Set[str]:
         """Get all user IDs of a specific type."""
-        return {user.get('id') for user in self.get_users_by_type(user_type) if user.get('id')}
+        return {user.get('_id') for user in self.get_users_by_type(user_type) if user.get('_id')}
 
     def get_mutual_users(self) -> List[Dict[str, Any]]:
         """Get users who both follow you and are followed by you."""
@@ -44,7 +42,7 @@ class Report(Base):
                 if 'follower' in user.get('type', []) and 'following' in user.get('type', [])]
 
     def get_non_mutual_followers(self) -> List[Dict[str, Any]]:
-        """Get users who follow you but you don't follow back."""
+        """Get users who follow you, but you don't follow back."""
         return [user for user in self.users
                 if 'follower' in user.get('type', []) and 'following' not in user.get('type', [])]
 
@@ -56,7 +54,7 @@ class Report(Base):
     def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific user by ID."""
         for user in self.users:
-            if user.get('id') == user_id:
+            if str(user.get('_id')) == str(user_id):
                 return user
         return None
 
