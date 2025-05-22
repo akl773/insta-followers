@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
-from typing import Optional, Union
+import time
+from dataclasses import dataclass, field, asdict
+from typing import Optional, Union, Any
 
 from bson import ObjectId
 from pymongo import UpdateOne, InsertOne, DeleteOne
@@ -25,8 +26,9 @@ class Base:
     def id(self, value):
         self._id = value
 
-    def __post_init__(self):
-        self.db = DBManager().get_instance()
+    @property
+    def db(self):
+        return DBManager().get_instance()
 
     def _get_collection_name(self) -> str:
         """
@@ -110,18 +112,70 @@ class Base:
 
         return result
 
-    @time_query
-    def update_many(self, query: dict, update: dict, upsert: bool = False) -> UpdateResult:
-        collection = self.__get_collection()
-        collection_name = self._get_collection_name()
-        result = collection.update_many(query, update, upsert=upsert)
+    @staticmethod
+    def _get_update_fields(params: dict, update_fields: list[str] | None = None) -> dict[str, Any]:
+        """
+        Helper method to extract update fields from params dictionary.
+        """
+        if update_fields is None:
+            # update all fields except meta fields
+            return {k: params[k] for k in params if k not in ["_id", "c", "deleted"]}
 
-        if result.modified_count:
-            print(f"Updated {result.modified_count} documents in '{collection_name}'")
-        elif result.upserted_id:
-            print(f"Inserted new document in '{collection_name}' with id {result.upserted_id}")
-        else:
-            print(f"No documents updated in '{collection_name}' (matched: {result.matched_count})")
+        # update specified fields except meta fields
+        return {k: params[k] for k in update_fields if k in params and k not in ["_id", "c", "deleted"]}
+
+    @time_query
+    def update_many(self, entities: list["Base"], query_fields=None, update_fields=None, upsert=True, session=None):
+        """
+        Update or insert multiple entities in a single bulk operation.
+        """
+        if not entities:
+            print(f"No entities provided for bulk update in '{self.__class__.__name__}'")
+            return None
+
+        # Default query fields is _id
+        if query_fields is None:
+            query_fields = ["_id"]
+
+        # Get current timestamp as a Unix timestamp (float)
+        current_time = time.time()  # Returns seconds since epoch as a float
+
+        db_updates = []
+        for entity in entities:
+            # Get entity as dict
+            params = entity.get_dict()
+
+            # Create query params from specified fields
+            query_params = {key: params[key] for key in query_fields if key in params}
+
+            # Get update fields using helper method
+            update_values = self._get_update_fields(params, update_fields)
+
+            # Add updated timestamp (Unix timestamp)
+            update_values['u'] = current_time
+
+            # Create the update operation
+            db_updates.append(
+                UpdateOne(
+                    query_params,
+                    {
+                        "$set": update_values,
+                        "$setOnInsert": {"c": current_time, "deleted": False}
+                    },
+                    upsert=upsert
+                )
+            )
+
+        # Get collection
+        collection = self.__get_collection()
+
+        # Execute bulk write and print results
+        result = collection.bulk_write(db_updates, ordered=False, session=session)
+        print(
+            f"Bulk operation completed on '{self.__class__.__name__}': "
+            f"{result.upserted_count} inserted, "
+            f"{result.modified_count} modified"
+        )
 
         return result
 
@@ -225,8 +279,7 @@ class Base:
         collection = self.__get_collection()
         collection_name = self._get_collection_name()
 
-        # Convert dataclass to dict, excluding the db attribute
-        document = {k: v for k, v in self.__dict__.items() if k != 'db'}
+        document = self.get_dict()
 
         # Check if this document already has an _id
         if '_id' in document and document['_id'] is not None:
@@ -244,6 +297,16 @@ class Base:
             # Update the _id attribute of this object
             self.id = result.inserted_id
             return result
+
+    def get_dict(self) -> dict:
+        # Use dataclasses.asdict to properly convert nested dataclasses too
+
+        full_dict = asdict(self)
+        # Remove the db attribute
+        if 'db' in full_dict:
+            del full_dict['db']
+
+        return full_dict
 
     def close(self):
         if hasattr(self, 'client') and self.client:
