@@ -80,14 +80,28 @@ class InstagramFollower:
             print(f"{Fore.GREEN}✅ Session saved{Style.RESET_ALL}")
         return client
 
-    def _fetch(self, name: str, method: str, emoji: str) -> List[User]:
-        """Fetch followers or following users from Instagram."""
-        print(f"\n{Fore.BLUE}{emoji} Fetching {name}...{Style.RESET_ALL}")
+    def get_followers(self):
+        """ Fetches the followers of the logged-in user.  """
+        print(f"\n{Fore.BLUE}📥 Fetching followers...{Style.RESET_ALL}")
         t0 = time.time()
-        data = getattr(self.client, method)(str(self.client.user_id), amount=self.amount)
-        users = [self._to_user(u) for u in data.values()]
+        followers = self.client.user_followers(str(self.client.user_id), amount=self.amount)
+        users = [self._to_user(u) for u in followers.values()]
         print(
-            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(users)}{Fore.GREEN} {name} in {Fore.YELLOW}{time.time() - t0:.2f}s{Style.RESET_ALL}")
+            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(users)}{Fore.GREEN}"
+            f" followers in {Fore.YELLOW}{time.time() - t0:.2f}s{Style.RESET_ALL}"
+        )
+        return users
+
+    def get_following(self):
+        """ Fetches the following of the logged-in user.  """
+        print(f"\n{Fore.BLUE}📥 Fetching following...{Style.RESET_ALL}")
+        t0 = time.time()
+        followers = self.client.user_following_v1(str(self.client.user_id), amount=self.amount)
+        users = [self._to_user(u) for u in followers]
+        print(
+            f"{Fore.GREEN}✅ Retrieved {Fore.YELLOW}{len(users)}{Fore.GREEN}"
+            f" followers in {Fore.YELLOW}{time.time() - t0:.2f}s{Style.RESET_ALL}"
+        )
         return users
 
     @staticmethod
@@ -239,20 +253,26 @@ class InstagramFollower:
                 if last:
                     self.print_changes(existing, last)
             return
-        followers = self._fetch('followers', 'user_followers', '📥')
-        following = self._fetch('following', 'user_following_v1', '📤')
+
+        followers = self.get_followers()
+        following = self.get_following()
+
         print(f"\n{Fore.BLUE}💾 Updating user DB...{Style.RESET_ALL}")
         User.update_many(followers + following)
+
         print(f"{Fore.GREEN}✅ User database updated{Style.RESET_ALL}")
+
         report = self.generate_report(followers, following)
         counts = self.get_relationship_counts(followers, following)
         self.print_summary(report, counts)
+
         last = Report.find_one({"generated_at": {"$lt": today}}, sort=[("generated_at", -1)])
         if last:
             self.analyse_reports(report, last)
             self.print_changes(report, last)
         else:
             print(f"\n{Fore.YELLOW}ℹ️ This is the first report - no comparison data available.{Style.RESET_ALL}")
+
         total = time.time() - self.start_time
         print(f"\n{Fore.GREEN}✅ Done in {Fore.YELLOW}{total:.2f}s{Style.RESET_ALL}")
 
