@@ -1,62 +1,20 @@
-import os
-import time
-import functools
-from typing import Optional, Union, Callable, Any
+from dataclasses import dataclass
+from typing import Optional, Union
 
-from dotenv import load_dotenv
-from pymongo import MongoClient, UpdateOne, InsertOne, DeleteOne
+from pymongo import UpdateOne, InsertOne, DeleteOne
+from pymongo.collection import Collection
 from pymongo.results import UpdateResult, BulkWriteResult, InsertOneResult, DeleteResult
-from pymongo.synchronous.collection import Collection
+
+from db_manager import DBManager
+from utils.decorators import time_query
 
 
-def time_query(func: Callable) -> Callable:
-    """Decorator to measure and print time taken by MongoDB queries."""
-
-    @functools.wraps(func)
-    def wrapper(self, collection_name: str, *args, **kwargs) -> Any:
-        start_time = time.time()
-        result = func(self, collection_name, *args, **kwargs)
-        execution_time = time.time() - start_time
-        print(f"⏱️ Query time for {func.__name__} on '{collection_name}': {execution_time:.4f} seconds\n")
-        return result
-
-    return wrapper
-
-
-class MongoProcessor:
+@dataclass
+class Base:
     """Handles MongoDB operations."""
 
-    def __init__(
-            self,
-            script_name="MongoDB Processor",
-            mongo_uri: str | None = None,
-            db_name: str | None = None
-    ):
-        """Initializes the main application class."""
-        self.db = None
-        self.client = None
-
-        self.script_name = script_name
-        print(f"🚀 {self.script_name} started")
-        self.setup_mongodb(mongo_uri, db_name)
-
-    def setup_mongodb(
-            self,
-            mongo_uri: str | None = None,
-            db_name: str | None = None
-    ):
-        """Connect to MongoDB."""
-        load_dotenv()
-        # Use defaults if env vars are missing
-        mongo_uri = mongo_uri or os.getenv("MONGO_URI", "mongodb://localhost:27017")
-        db_name = db_name or os.getenv("DATABASE_NAME", "LazyApply")
-        try:
-            self.client = MongoClient(mongo_uri)
-            self.db = self.client[db_name]
-            print(f"Connected to database: {db_name} @ {mongo_uri[:5]}...")
-        except Exception as e:
-            print(f"Failed to connect to MongoDB at {mongo_uri}: {e}")
-            raise
+    def __init__(self):
+        self.db = DBManager().get_instance()
 
     def __get_collection(self, collection_name: str) -> Collection:
         """Get a MongoDB collection by name."""
@@ -250,4 +208,3 @@ class MongoProcessor:
         if hasattr(self, 'client') and self.client:
             self.client.close()
             print("MongoDB connection closed")
-        print(f"🎉 {self.script_name} completed")
