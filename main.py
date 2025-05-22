@@ -145,7 +145,10 @@ class InstagramFollower:
                 d['type'].append('follower')
             if u.id in gids and 'following' not in d['type']:
                 d['type'].append('following')
+
+        generated_at = get_morning_time()
         report = Report(
+            _id=str(generated_at),
             generated_at=get_morning_time(),
             num_followers=len(followers),
             num_following=len(following),

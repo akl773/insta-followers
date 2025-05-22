@@ -15,6 +15,7 @@ class Report(Base):
     Stores user data and analysis results of changes between reports.
     """
     # Basic report data
+    _id: str = ""
     generated_at: datetime = field(default_factory=get_morning_time)
     num_followers: int = 0
     num_following: int = 0
