@@ -18,6 +18,8 @@ class InstagramFollower:
     def __init__(self):
         self.client = self.initialise()
         self.dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
+        self.force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
+        print(f"DRY RUN: {self.dry_run}")
         self.amount = 0 if not self.dry_run else 10
 
     @staticmethod
@@ -115,7 +117,7 @@ class InstagramFollower:
     def generate_report(followers: list[User], following: list[User]):
         """
         Generate a report containing follower and following information.
-        Categorizes each user as follower, following, or both.
+        Categorizes each user as a follower, following, or both.
         """
         # Get sets of IDs for efficient operations
         follower_ids = {user.id for user in followers}
@@ -181,7 +183,11 @@ class InstagramFollower:
         current_dt = get_morning_time()
         existing_report = Report.find_one({"generated_at": current_dt})
 
-        if existing_report:
+        if (
+                existing_report and
+                not self.force_run
+                and not self.dry_run
+        ):
             print(f"Report already generated for {current_dt}.")
             return
 
@@ -190,7 +196,7 @@ class InstagramFollower:
         following: list[User] = self.get_following()
 
         # Update user collection
-        User().update_many(followers + following)
+        User.update_many(followers + following)
 
         # Get a previous report for comparison
         last_report = self.previous_generated_report()
