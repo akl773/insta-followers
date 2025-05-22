@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any, Union, Set
 
 from instagrapi import Client
 from dotenv import load_dotenv
@@ -18,6 +18,7 @@ load_dotenv()
 
 class InstagramFollower:
     def __init__(self):
+        """Initialize the Instagram follower analyzer with user settings."""
         self._print_header()
         self.start_time = time.time()
         self.client = self._init_client()
@@ -31,12 +32,14 @@ class InstagramFollower:
 
     @staticmethod
     def _print_header():
+        """Display the program header with formatting."""
         print(f"{Fore.CYAN}╔{'═' * 38}╗{Style.RESET_ALL}")
         print(f"{Fore.CYAN}║{' Instagram Follower Analyzer ':^38}║{Style.RESET_ALL}")
         print(f"{Fore.CYAN}╚{'═' * 38}╝{Style.RESET_ALL}")
 
     @staticmethod
     def _get_choice(prompt: str, default: bool = False) -> bool:
+        """Get a yes/no choice from the user with a default option."""
         while True:
             resp = input(f"{Fore.YELLOW}{prompt}{Style.RESET_ALL}").strip().lower()
             if not resp:
@@ -47,7 +50,9 @@ class InstagramFollower:
                 return False
             print(f"{Fore.RED}Invalid input. Enter 'y' or 'n'.{Style.RESET_ALL}")
 
-    def _init_client(self) -> Client:
+    @staticmethod
+    def _init_client() -> Client:
+        """Initialize the Instagram client with session management."""
         user, pwd = os.getenv('INSTAGRAM_USERNAME'), os.getenv('INSTAGRAM_PASSWORD')
         if not user or not pwd:
             print(f"{Fore.RED}Credentials missing in .env{Style.RESET_ALL}")
@@ -76,6 +81,7 @@ class InstagramFollower:
         return client
 
     def _fetch(self, name: str, method: str, emoji: str) -> List[User]:
+        """Fetch followers or following users from Instagram."""
         print(f"\n{Fore.BLUE}{emoji} Fetching {name}...{Style.RESET_ALL}")
         t0 = time.time()
         data = getattr(self.client, method)(str(self.client.user_id), amount=self.amount)
@@ -86,12 +92,25 @@ class InstagramFollower:
 
     @staticmethod
     def _to_user(u: UserShort) -> User:
+        """Convert an Instagram UserShort object to our User model."""
         return User(_id=u.pk, username=u.username, full_name=u.full_name, profile_pic_url=str(u.profile_pic_url))
 
     @staticmethod
-    def get_relationship_counts(followers: List[User], following: List[User]) -> Dict[str, int]:
-        fids = {u.id for u in followers}
-        gids = {u.id for u in following}
+    def get_relationship_counts(
+            followers: Union[List[User], List[Dict[str, Any]]],
+            following: Union[List[User], List[Dict[str, Any]]]
+    ) -> Dict[str, int]:
+        """Calculate counts of different relationship types between followers and following."""
+        # Handle both User objects and dictionaries
+        if followers and isinstance(followers[0], dict):
+            # We're dealing with dictionaries
+            fids = {u.get('id') for u in followers if u.get('id')}
+            gids = {u.get('id') for u in following if u.get('id')}
+        else:
+            # We're dealing with User objects
+            fids = {u.id for u in followers}
+            gids = {u.id for u in following}
+
         return {
             "followers": len(followers),
             "following": len(following),
@@ -100,12 +119,12 @@ class InstagramFollower:
             "following_only": len(gids - fids)
         }
 
-    @staticmethod
-    def generate_report(followers: List[User], following: List[User]) -> Report:
+    def generate_report(self, followers: List[User], following: List[User]) -> Report:
+        """Generate a new report based on current followers and following."""
         print(f"\n{Fore.BLUE}📊 Generating report...{Style.RESET_ALL}")
         t0 = time.time()
         fids, gids = {u.id for u in followers}, {u.id for u in following}
-        users: Dict[int, Dict] = {}
+        users: Dict[str, Dict] = {}
         for u in followers + following:
             d = users.setdefault(u.id, u.get_dict() | {'type': []})
             if u.id in fids and 'follower' not in d['type']:
@@ -123,6 +142,7 @@ class InstagramFollower:
         return report
 
     def print_summary(self, report: Report, counts: Dict[str, int] = None):
+        """Print a summary of the report showing follower/following statistics."""
         if counts is None:
             counts = self.get_relationship_counts([
                 u for u in report.users if 'follower' in u.get('type', [])
@@ -140,6 +160,7 @@ class InstagramFollower:
         self._print_box("Report Summary", content)
 
     def print_changes(self, report: Report, last: Report):
+        """Print changes between current report and previous report."""
         stats = getattr(report, 'stats', {})
         if not stats:
             print(f"{Fore.YELLOW}ℹ️ No change data.{Style.RESET_ALL}")
@@ -158,7 +179,8 @@ class InstagramFollower:
                 content.append(f"{color}{label}: {cnt}{Style.RESET_ALL}")
                 for i, uid in enumerate(lst[:5], 1):
                     user = (report if 'new' in key else last).get_user_by_id(uid)
-                    content.append(f"  {i}. @{user.get('username')} ({user.get('full_name')})")
+                    if user:
+                        content.append(f"  {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
                 if len(lst) > 5:
                     content.append(f"  ... and {len(lst) - 5} more")
             else:
@@ -172,6 +194,7 @@ class InstagramFollower:
         self._print_box("Changes Analysis", content)
 
     def analyse_reports(self, report: Report, last: Report):
+        """Analyze differences between current and previous reports."""
         print(f"\n{Fore.BLUE}🔍 Analyzing since {last.generated_at:%Y-%m-%d}...{Style.RESET_ALL}")
         curr_f = set(report.get_user_ids_by_type('follower'))
         prev_f = set(last.get_user_ids_by_type('follower'))
@@ -195,6 +218,7 @@ class InstagramFollower:
 
     @staticmethod
     def _print_box(title: str, content: List[str], color=Fore.CYAN):
+        """Print a formatted box with title and content."""
         width = max(len(line) for line in content + [title]) + 6
         print(f"\n{color}┌{'─' * (width - 2)}┐{Style.RESET_ALL}")
         print(f"{color}│{title.center(width - 2)}│{Style.RESET_ALL}")
@@ -204,6 +228,7 @@ class InstagramFollower:
         print(f"{color}└{'─' * (width - 2)}┘{Style.RESET_ALL}")
 
     def run(self):
+        """Run the Instagram follower analysis process."""
         today = get_morning_time()
         existing = Report.find_one({"generated_at": today})
         if existing and not self.force_run and not self.dry_run:
@@ -218,13 +243,16 @@ class InstagramFollower:
         following = self._fetch('following', 'user_following', '📤')
         print(f"\n{Fore.BLUE}💾 Updating user DB...{Style.RESET_ALL}")
         User.update_many(followers + following)
+        print(f"{Fore.GREEN}✅ User database updated{Style.RESET_ALL}")
         report = self.generate_report(followers, following)
         counts = self.get_relationship_counts(followers, following)
         self.print_summary(report, counts)
-        last = Report.find_one({}, sort=[("generated_at", -1)])
+        last = Report.find_one({"generated_at": {"$lt": today}}, sort=[("generated_at", -1)])
         if last:
             self.analyse_reports(report, last)
             self.print_changes(report, last)
+        else:
+            print(f"\n{Fore.YELLOW}ℹ️ This is the first report - no comparison data available.{Style.RESET_ALL}")
         total = time.time() - self.start_time
         print(f"\n{Fore.GREEN}✅ Done in {Fore.YELLOW}{total:.2f}s{Style.RESET_ALL}")
 
