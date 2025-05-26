@@ -1,15 +1,15 @@
 import os
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Union, Set
+from typing import List, Dict, Any, Union
 
-from instagrapi import Client
-from dotenv import load_dotenv
-from instagrapi.types import UserShort
 from colorama import init, Fore, Style
+from dotenv import load_dotenv
+from instagrapi import Client
+from instagrapi.types import UserShort
 
-from Models.report import Report
-from Models.user import User
+from models.report import Report
+from models.user import User
 from utils.db_utils import ensure_local_db
 from utils.time import get_morning_time
 

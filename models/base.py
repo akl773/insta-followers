@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field, asdict, fields
-from typing import Optional, Union, Any, ClassVar, Type, TypeVar, Mapping
+from typing import Optional, Union, Any, Type, TypeVar, Mapping
 
 from bson import ObjectId
 from pymongo import UpdateOne, InsertOne, DeleteOne
