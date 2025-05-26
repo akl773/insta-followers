@@ -23,8 +23,8 @@ class InstagramFollower:
         self._print_header()
         self.start_time = time.time()
         self.client = self._init_client()
-        self.dry_run = False
-        self.force_run = True
+        self.dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
+        self.force_run = os.getenv("FORCE_RUN", "false").lower() == "true"
         if self.dry_run:
             print(f"{Fore.YELLOW}⚠️  DRY RUN MODE ENABLED - Limited to 10 users{Style.RESET_ALL}")
         if self.force_run:
