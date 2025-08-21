@@ -246,17 +246,32 @@ class InstagramFollower:
         print(f"{color}└{'─' * (width - 2)}┘{Style.RESET_ALL}")
 
     @staticmethod
+    def _exception_not_following_back():
+        """ Get a list of exceptions for users who are not following back. """
+        usernames = os.getenv("EXCEPTION_NOT_FOLLOWING_BACK", "")
+        return [username.strip() for username in usernames.split(",") if username.strip()]
+
+    @staticmethod
     def not_following_back(report: Report, filename: str = "not_following_back.json"):
-        """ Save a list of users who are not following back. """
+        """Save a list of users who are not following back."""
         urls = []
+        exceptions = InstagramFollower._exception_not_following_back()
         for user in report.users:
-            if user["type"] != ["following"]:
+            username = user.get("username", "").strip()
+            types = user.get("type", [])
+
+            if username.lower() in exceptions:
+                continue
+            if types != ["following"]:
                 continue
 
-            url = f"https://www.instagram.com/{user['username']}/"
-            urls.append(url)
+            urls.append(f"https://www.instagram.com/{username}/")
 
-        with open(filename, "w") as save_file:
+        save_dir = os.getenv("SAVE_DIR", os.getcwd())
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, filename)
+
+        with open(filepath, "w") as save_file:
             json.dump(urls, save_file)
 
     def run(self):
