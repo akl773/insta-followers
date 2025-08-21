@@ -10,7 +10,6 @@ from instagrapi.types import UserShort
 
 from models.report import Report
 from models.user import User
-from utils.db_utils import ensure_local_db
 from utils.time import get_morning_time
 
 init()
@@ -282,7 +281,6 @@ class InstagramFollower:
 
 
 if __name__ == "__main__":
-    ensure_local_db()
     try:
         InstagramFollower().run()
     except KeyboardInterrupt:
