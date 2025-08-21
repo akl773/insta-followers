@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from pathlib import Path
@@ -244,8 +245,23 @@ class InstagramFollower:
             print(f"{color}│ {line}{' ' * (width - len(line) - 3)}│{Style.RESET_ALL}")
         print(f"{color}└{'─' * (width - 2)}┘{Style.RESET_ALL}")
 
+    @staticmethod
+    def not_following_back(report: Report, filename: str = "not_following_back.json"):
+        """ Save a list of users who are not following back. """
+        urls = []
+        for user in report.users:
+            if user["type"] != ["following"]:
+                continue
+
+            url = f"https://www.instagram.com/{user['username']}/"
+            urls.append(url)
+
+        with open(filename, "w") as save_file:
+            json.dump(urls, save_file)
+
     def run(self):
         """Run the Instagram follower analysis process."""
+        print(f"{Fore.BLUE}🔄 Starting analysis...{Style.RESET_ALL}")
         today = get_morning_time()
         existing = Report.find_one({"generated_at": today})
         if existing and not self.force_run and not self.dry_run:
@@ -257,6 +273,7 @@ class InstagramFollower:
                     self.print_changes(existing, last)
             return
 
+        print(f"{Fore.BLUE}📈 Fetching followers and following...{Style.RESET_ALL}")
         followers = self.get_followers()
         following = self.get_following()
 
@@ -278,6 +295,9 @@ class InstagramFollower:
 
         total = time.time() - self.start_time
         print(f"\n{Fore.GREEN}✅ Done in {Fore.YELLOW}{total:.2f}s{Style.RESET_ALL}")
+
+        print(f"\n{Fore.GREEN} Fetching users not following back...{Style.RESET_ALL}")
+        self.not_following_back(report)
 
 
 if __name__ == "__main__":
