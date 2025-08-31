@@ -35,23 +35,6 @@ export interface NotFollowingBackUser {
   instagram_url: string;
 }
 
-export interface UserPost {
-  id: string;
-  media_type: number;
-  thumbnail_url: string | null;
-  media_url: string | null;
-  caption: string;
-  like_count: number;
-  comment_count: number;
-  taken_at: string | null;
-}
-
-export interface RelationshipStatus {
-  is_following_us: boolean;
-  we_are_following: boolean;
-  is_mutual: boolean;
-}
-
 export interface UserDetails {
   id: string;
   username: string;
