@@ -40,9 +40,7 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
 
     useEffect(() => {
         if (open && username) {
-            (async () => {
-                await fetchUserDetails();
-            })();
+            fetchUserDetails();
         }
     }, [open, username]);
 
@@ -99,28 +97,29 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
                     </IconButton>
                 </Box>
             </DialogTitle>
-
             <DialogContent>
                 {error && (
                     <Alert severity="error" sx={{mb: 2}}>
                         {error}
                     </Alert>
                 )}
-
                 {userDetails && (
                     <Box>
                         {/* Profile Header */}
                         <Box display="flex" alignItems="center" mb={3}>
                             <Avatar
-                                src={userDetails.profile_pic_url}
+                                src={userDetails.profile_pic_url ? `/proxy-image?url=${encodeURIComponent(userDetails.profile_pic_url)}` : undefined}
                                 alt={userDetails.username}
                                 sx={{width: 80, height: 80, mr: 3}}
+                                onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = '/default-profile.png';
+                                }}
                             >
                                 {userDetails.username.charAt(0).toUpperCase()}
                             </Avatar>
-
                             <Box flex={1}>
-                                <Box display="flex" alignItems="center" mb={1}>
+                                <Box sx={{display: 'flex', alignItems: 'center', mb: 1}}>
                                     <Typography variant="h5" component="div" sx={{mr: 1}}>
                                         {userDetails.username}
                                     </Typography>
@@ -133,23 +132,19 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
                                         <Public color="action"/>
                                     )}
                                 </Box>
-
-                                <Typography variant="body1" color="textSecondary" mb={1}>
-                                    {userDetails.full_name}
-                                </Typography>
-
                                 {userDetails.website && (
-                                    <Link
-                                        href={userDetails.website}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        sx={{display: 'flex', alignItems: 'center', mb: 1}}
-                                    >
+                                    <Typography variant="body2" color="textSecondary"
+                                                sx={{display: 'flex', alignItems: 'center', mb: 1}}>
                                         <Language sx={{mr: 0.5, fontSize: 16}}/>
-                                        {userDetails.website}
-                                    </Link>
+                                        <Link
+                                            href={userDetails.website}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            {userDetails.website}
+                                        </Link>
+                                    </Typography>
                                 )}
-
                                 <Button
                                     variant="outlined"
                                     startIcon={<Instagram/>}
@@ -179,16 +174,19 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
                             </Grid>
                         </Paper>
 
+                        <Divider sx={{my: 3}}/>
+
                         {/* Biography */}
                         {userDetails.biography && (
                             <Box mb={3}>
+                                <Typography variant="h6" gutterBottom>
+                                    Biography
+                                </Typography>
                                 <Typography variant="body1" sx={{whiteSpace: 'pre-wrap'}}>
                                     {userDetails.biography}
                                 </Typography>
                             </Box>
                         )}
-
-                        <Divider sx={{my: 3}}/>
                     </Box>
                 )}
             </DialogContent>
