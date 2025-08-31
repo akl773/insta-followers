@@ -1,14 +1,13 @@
+import os
+from datetime import datetime
+from pathlib import Path
+from typing import List, Dict
+
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
-import os
-import time
-from datetime import datetime
-from typing import List, Dict, Any
-
 from instagrapi import Client
 from instagrapi.types import UserShort
-from pathlib import Path
-from dotenv import load_dotenv
 
 from models.report import Report
 from models.user import User
@@ -257,7 +256,6 @@ def get_user_details(username):
             })
         # Not cached or expired, fetch from Instagram
         api = get_instagram_api()
-        api.client.user_friendships_v1()
         print(f"[DEBUG] Got Instagram API instance")
         try:
             user_info = api.client.user_info_by_username_v1(username)
