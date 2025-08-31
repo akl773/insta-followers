@@ -5,12 +5,6 @@ from pymongo import ASCENDING
 from db_manager import get_db
 
 @dataclass
-class RelationshipStatus:
-    is_following_us: bool = False
-    we_are_following: bool = False
-    is_mutual: bool = False
-
-@dataclass
 class UserProfileCache:
     id: str
     username: str
@@ -23,15 +17,12 @@ class UserProfileCache:
     followers_count: int
     following_count: int
     media_count: int
-    relationship_status: RelationshipStatus
     expire_at: datetime = field(default_factory=lambda: datetime.now(UTC) + timedelta(days=10))
 
     COLLECTION = 'user_profile_cache'
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'UserProfileCache':
-        rs = data.get('relationship_status', {})
-        relationship_status = RelationshipStatus(**rs) if isinstance(rs, dict) else rs
         expire_at = data.get('expire_at', datetime.now(UTC) + timedelta(days=10))
         # Ensure expire_at is always offset-aware
         if isinstance(expire_at, datetime):
@@ -49,13 +40,11 @@ class UserProfileCache:
             followers_count=int(data.get('followers_count', 0)),
             following_count=int(data.get('following_count', 0)),
             media_count=int(data.get('media_count', 0)),
-            relationship_status=relationship_status,
             expire_at=expire_at
         )
 
     def to_dict(self) -> Dict:
         d = asdict(self)
-        d['relationship_status'] = asdict(self.relationship_status)
         return d
 
     @classmethod
@@ -68,9 +57,6 @@ class UserProfileCache:
     def upsert(cls, username: str, profile_data: Dict, ttl_days: int = 10) -> 'UserProfileCache':
         db = get_db()
         expire_at = datetime.now(UTC) + timedelta(days=ttl_days)
-        # Convert relationship_status to dataclass if needed
-        rs = profile_data.get('relationship_status', {})
-        relationship_status = RelationshipStatus(**rs) if isinstance(rs, dict) else rs
         cache = cls(
             id=str(profile_data.get('id', '')),
             username=username,
@@ -83,7 +69,6 @@ class UserProfileCache:
             followers_count=int(profile_data.get('followers_count', 0)),
             following_count=int(profile_data.get('following_count', 0)),
             media_count=int(profile_data.get('media_count', 0)),
-            relationship_status=relationship_status,
             expire_at=expire_at
         )
         db[cls.COLLECTION].update_one(
