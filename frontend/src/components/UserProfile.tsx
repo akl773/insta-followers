@@ -180,6 +180,25 @@ const UserProfile: React.FC<UserProfileProps> = ({ open, onClose, username }) =>
               </Box>
             </Box>
 
+            {/* Relationship Status Section */}
+            <Box mb={2}>
+              <Typography variant="subtitle1" gutterBottom>Relationship Status</Typography>
+              <Box display="flex" gap={2}>
+                <Chip
+                  label={userDetails.relationship_status.is_following_us ? "Follows You" : "Doesn't Follow You"}
+                  color={userDetails.relationship_status.is_following_us ? "success" : "default"}
+                />
+                <Chip
+                  label={userDetails.relationship_status.we_are_following ? "You Follow" : "You Don't Follow"}
+                  color={userDetails.relationship_status.we_are_following ? "primary" : "default"}
+                />
+                <Chip
+                  label={userDetails.relationship_status.is_mutual ? "Mutual" : "Not Mutual"}
+                  color={userDetails.relationship_status.is_mutual ? "secondary" : "default"}
+                />
+              </Box>
+            </Box>
+
             {/* Stats */}
             <Paper sx={{ p: 2, mb: 3 }}>
               <Grid container spacing={2} textAlign="center">
@@ -213,97 +232,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ open, onClose, username }) =>
               </Box>
             )}
 
-            {/* Relationship Status */}
-            <Box mb={3}>
-              <Typography variant="h6" gutterBottom>Relationship Status</Typography>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Chip
-                  label={userDetails.relationship_status.is_following_us ? 'Follows You' : 'Doesn\'t Follow You'}
-                  color={userDetails.relationship_status.is_following_us ? 'success' : 'default'}
-                  size="small"
-                />
-                <Chip
-                  label={userDetails.relationship_status.we_are_following ? 'You Follow Them' : 'You Don\'t Follow'}
-                  color={userDetails.relationship_status.we_are_following ? 'primary' : 'default'}
-                  size="small"
-                />
-                {userDetails.relationship_status.is_mutual && (
-                  <Chip
-                    label="Mutual Connection"
-                    color="secondary"
-                    size="small"
-                  />
-                )}
-              </Box>
-            </Box>
-
             <Divider sx={{ my: 3 }} />
-
-            {/* Recent Posts */}
-            <Typography variant="h6" gutterBottom>Recent Posts</Typography>
-            {userDetails.recent_posts.length > 0 ? (
-              <Grid container spacing={2}>
-                {userDetails.recent_posts.map((post) => (
-                  <Grid item xs={12} sm={6} md={4} key={post.id}>
-                    <Card>
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={post.thumbnail_url || post.media_url || ''}
-                        alt="Post"
-                        sx={{ objectFit: 'cover' }}
-                      />
-                      <CardContent sx={{ p: 1 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                          <Box display="flex" alignItems="center" gap={0.5}>
-                            <Favorite fontSize="small" color="error" />
-                            <Typography variant="caption">
-                              {formatNumber(post.like_count)}
-                            </Typography>
-                          </Box>
-                          <Box display="flex" alignItems="center" gap={0.5}>
-                            <ChatBubble fontSize="small" color="action" />
-                            <Typography variant="caption">
-                              {formatNumber(post.comment_count)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        
-                        {post.caption && (
-                          <Typography variant="caption" color="textSecondary" sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}>
-                            {post.caption}
-                          </Typography>
-                        )}
-                        
-                        {post.taken_at && (
-                          <Box display="flex" alignItems="center" mt={1}>
-                            <CalendarToday fontSize="small" color="action" sx={{ mr: 0.5 }} />
-                            <Typography variant="caption" color="textSecondary">
-                              {format(new Date(post.taken_at), 'MMM dd, yyyy')}
-                            </Typography>
-                          </Box>
-                        )}
-                        
-                        {getMediaTypeIcon(post.media_type) && (
-                          <Typography variant="caption" sx={{ ml: 1 }}>
-                            {getMediaTypeIcon(post.media_type)}
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Typography variant="body2" color="textSecondary" align="center">
-                No recent posts available
-              </Typography>
-            )}
           </Box>
         )}
       </DialogContent>
