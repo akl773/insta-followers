@@ -227,6 +227,82 @@ def generate_report():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/user/<user_id>', methods=['GET'])
+def get_user_details(user_id):
+    """Get detailed information about a specific user."""
+    try:
+        api = get_instagram_api()
+        
+        # Get user info from Instagram
+        user_info = api.client.user_info_by_username_v1(user_id)
+        
+        # Get user's followers and following counts
+        followers_count = api.client.user_followers_count(user_info.pk)
+        following_count = api.client.user_following_count(user_info.pk)
+        
+        # Get recent posts (limit to 6 for performance)
+        try:
+            user_posts = api.client.user_medias(user_info.pk, amount=6)
+            recent_posts = []
+            for post in user_posts:
+                recent_posts.append({
+                    'id': post.pk,
+                    'media_type': post.media_type,
+                    'thumbnail_url': str(post.thumbnail_url) if post.thumbnail_url else None,
+                    'media_url': str(post.media_url) if post.media_url else None,
+                    'caption': post.caption_text if post.caption_text else '',
+                    'like_count': post.like_count,
+                    'comment_count': post.comment_count,
+                    'taken_at': post.taken_at.isoformat() if post.taken_at else None
+                })
+        except Exception as e:
+            recent_posts = []
+            print(f"Could not fetch posts for user {user_id}: {e}")
+        
+        # Check if this user follows us and we follow them
+        current_user_id = str(api.client.user_id)
+        is_following_us = False
+        we_are_following = False
+        
+        try:
+            # Check if they follow us
+            our_followers = api.client.user_followers(current_user_id, amount=1000)
+            is_following_us = user_info.pk in our_followers
+            
+            # Check if we follow them
+            our_following = api.client.user_following_v1(current_user_id, amount=1000)
+            we_are_following = user_info.pk in our_following
+        except Exception as e:
+            print(f"Could not check follow status: {e}")
+        
+        user_details = {
+            'id': user_info.pk,
+            'username': user_info.username,
+            'full_name': user_info.full_name,
+            'profile_pic_url': str(user_info.profile_pic_url),
+            'biography': user_info.biography,
+            'website': user_info.website,
+            'is_private': user_info.is_private,
+            'is_verified': user_info.is_verified,
+            'followers_count': followers_count,
+            'following_count': following_count,
+            'media_count': user_info.media_count,
+            'recent_posts': recent_posts,
+            'relationship_status': {
+                'is_following_us': is_following_us,
+                'we_are_following': we_are_following,
+                'is_mutual': is_following_us and we_are_following
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': user_details
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/not-following-back', methods=['GET'])
 def get_not_following_back():
     """Get users who are not following back."""
