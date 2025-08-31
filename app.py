@@ -257,6 +257,7 @@ def get_user_details(username):
             })
         # Not cached or expired, fetch from Instagram
         api = get_instagram_api()
+        api.client.user_friendships_v1()
         print(f"[DEBUG] Got Instagram API instance")
         try:
             user_info = api.client.user_info_by_username_v1(username)
@@ -267,8 +268,6 @@ def get_user_details(username):
             raise
         followers_count = getattr(user_info, 'follower_count', None)
         following_count = getattr(user_info, 'following_count', None)
-        is_following_us = False
-        we_are_following = False
         user_details = {
             'id': getattr(user_info, 'pk', None),
             'username': getattr(user_info, 'username', None),
@@ -280,12 +279,7 @@ def get_user_details(username):
             'is_verified': getattr(user_info, 'is_verified', None),
             'followers_count': followers_count,
             'following_count': following_count,
-            'media_count': getattr(user_info, 'media_count', None),
-            'relationship_status': {
-                'is_following_us': is_following_us,
-                'we_are_following': we_are_following,
-                'is_mutual': is_following_us and we_are_following
-            }
+            'media_count': getattr(user_info, 'media_count', None)
         }
         print(f"[DEBUG] Final user_details dict: {user_details}")
         # Save to cache
