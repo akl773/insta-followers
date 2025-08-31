@@ -40,7 +40,9 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
 
     useEffect(() => {
         if (open && username) {
-            fetchUserDetails();
+            (async () => {
+                await fetchUserDetails();
+            })();
         }
     }, [open, username]);
 
