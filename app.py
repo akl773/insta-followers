@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import List, Dict
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, Response
 from flask_cors import CORS
 from instagrapi import Client
 from instagrapi.types import UserShort
+import requests
 
 from models.report import Report
 from models.user import User
@@ -332,6 +333,20 @@ def get_not_following_back():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/proxy-image')
+def proxy_image():
+    url = request.args.get('url')
+    if not url:
+        return jsonify({'error': 'Missing url parameter'}), 400
+    try:
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        return Response(resp.content, mimetype=content_type)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
