@@ -46,6 +46,12 @@ export interface UserPost {
   taken_at: string | null;
 }
 
+export interface RelationshipStatus {
+  is_following_us: boolean;
+  we_are_following: boolean;
+  is_mutual: boolean;
+}
+
 export interface UserDetails {
   id: string;
   username: string;
@@ -58,12 +64,7 @@ export interface UserDetails {
   followers_count: number;
   following_count: number;
   media_count: number;
-  recent_posts: UserPost[];
-  relationship_status: {
-    is_following_us: boolean;
-    we_are_following: boolean;
-    is_mutual: boolean;
-  };
+  relationship_status: RelationshipStatus;
 }
 
 export const apiService = {
