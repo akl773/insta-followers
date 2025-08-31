@@ -21,15 +21,11 @@ import {
     Verified,
     Lock,
     Public,
-    Favorite,
-    ChatBubble,
-    CalendarToday,
     Language,
     Instagram,
     OpenInNew,
 } from '@mui/icons-material';
 import {apiService, UserDetails} from '../services/api';
-import {format} from 'date-fns';
 
 interface UserProfileProps {
     open: boolean;
@@ -77,19 +73,6 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
             return `${(num / 1000).toFixed(1)}K`;
         }
         return num.toString();
-    };
-
-    const getMediaTypeIcon = (mediaType: number) => {
-        switch (mediaType) {
-            case 1: // Photo
-                return null;
-            case 2: // Video
-                return '🎥';
-            case 8: // Album
-                return '📷';
-            default:
-                return null;
-        }
     };
 
     if (loading) {
