@@ -46,7 +46,6 @@ function App() {
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
           <Navbar />
           <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-            <button onClick={() => handleOpenProfile('testuser')}>Show Profile for testuser</button>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/reports" element={<Reports />} />
