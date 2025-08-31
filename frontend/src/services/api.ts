@@ -50,37 +50,6 @@ export interface UserDetails {
 }
 
 export const apiService = {
-  // Health check
-  healthCheck: () => api.get('/health'),
-
-  // Followers
-  getFollowers: (limit?: number) => 
-    api.get<{success: boolean; data: User[]; count: number}>('/followers', {
-      params: { limit }
-    }),
-
-  // Following
-  getFollowing: (limit?: number) => 
-    api.get<{success: boolean; data: User[]; count: number}>('/following', {
-      params: { limit }
-    }),
-
-  // Reports
-  getReports: (limit?: number) => 
-    api.get<{success: boolean; data: Report[]}>('/reports', {
-      params: { limit }
-    }),
-
-  getLatestReport: () => 
-    api.get<{success: boolean; data: Report}>('/reports/latest'),
-
-  generateReport: () => 
-    api.post<{success: boolean; data: Report; message: string}>('/reports/generate'),
-
-  // Not following back
-  getNotFollowingBack: () => 
-    api.get<{success: boolean; data: NotFollowingBackUser[]; count: number}>('/not-following-back'),
-
   // User details
   getUserDetails: (username: string) => 
     api.get<{success: boolean; data: UserDetails}>(`/user/${username}`),
