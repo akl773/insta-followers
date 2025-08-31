@@ -64,7 +64,6 @@ export interface UserDetails {
   followers_count: number;
   following_count: number;
   media_count: number;
-  relationship_status: RelationshipStatus;
 }
 
 export const apiService = {
