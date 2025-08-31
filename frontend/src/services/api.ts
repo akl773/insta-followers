@@ -35,6 +35,37 @@ export interface NotFollowingBackUser {
   instagram_url: string;
 }
 
+export interface UserPost {
+  id: string;
+  media_type: number;
+  thumbnail_url: string | null;
+  media_url: string | null;
+  caption: string;
+  like_count: number;
+  comment_count: number;
+  taken_at: string | null;
+}
+
+export interface UserDetails {
+  id: string;
+  username: string;
+  full_name: string;
+  profile_pic_url: string;
+  biography: string;
+  website: string;
+  is_private: boolean;
+  is_verified: boolean;
+  followers_count: number;
+  following_count: number;
+  media_count: number;
+  recent_posts: UserPost[];
+  relationship_status: {
+    is_following_us: boolean;
+    we_are_following: boolean;
+    is_mutual: boolean;
+  };
+}
+
 export const apiService = {
   // Health check
   healthCheck: () => api.get('/health'),
@@ -66,6 +97,10 @@ export const apiService = {
   // Not following back
   getNotFollowingBack: () => 
     api.get<{success: boolean; data: NotFollowingBackUser[]; count: number}>('/not-following-back'),
+
+  // User details
+  getUserDetails: (username: string) => 
+    api.get<{success: boolean; data: UserDetails}>(`/user/${username}`),
 };
 
 export default api;
