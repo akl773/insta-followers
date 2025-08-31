@@ -46,3 +46,13 @@ class DBManager:
         except Exception as e:
             print(f"Failed to connect to MongoDB at {mongo_uri}: {e}")
             raise
+
+
+_db_manager_instance = None
+
+
+def get_db():
+    global _db_manager_instance
+    if _db_manager_instance is None:
+        _db_manager_instance = DBManager()
+    return _db_manager_instance.db
