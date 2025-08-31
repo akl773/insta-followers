@@ -17,11 +17,14 @@ import {
 } from '@mui/material';
 import { Instagram, OpenInNew } from '@mui/icons-material';
 import { apiService, NotFollowingBackUser } from '../services/api';
+import UserProfile from '../components/UserProfile';
 
 const NotFollowingBack: React.FC = () => {
   const [users, setUsers] = useState<NotFollowingBackUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   useEffect(() => {
     fetchNotFollowingBack();
@@ -45,6 +48,16 @@ const NotFollowingBack: React.FC = () => {
 
   const openInstagramProfile = (url: string) => {
     window.open(url, '_blank');
+  };
+
+  const handleUserClick = (username: string) => {
+    setSelectedUser(username);
+    setUserProfileOpen(true);
+  };
+
+  const handleCloseUserProfile = () => {
+    setUserProfileOpen(false);
+    setSelectedUser(null);
   };
 
   if (loading) {
@@ -89,7 +102,10 @@ const NotFollowingBack: React.FC = () => {
         <Grid container spacing={2}>
           {users.map((user) => (
             <Grid item xs={12} sm={6} md={4} key={user.username}>
-              <Card>
+              <Card 
+                sx={{ cursor: 'pointer' }}
+                onClick={() => handleUserClick(user.username)}
+              >
                 <CardContent>
                   <Box display="flex" alignItems="center" mb={2}>
                     <Avatar
@@ -111,7 +127,10 @@ const NotFollowingBack: React.FC = () => {
                   <Button
                     variant="outlined"
                     startIcon={<OpenInNew />}
-                    onClick={() => openInstagramProfile(user.instagram_url)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openInstagramProfile(user.instagram_url);
+                    }}
                     fullWidth
                     size="small"
                   >
@@ -131,6 +150,15 @@ const NotFollowingBack: React.FC = () => {
             Click "View Profile" to open their Instagram profile in a new tab.
           </Typography>
         </Box>
+      )}
+
+      {/* User Profile Modal */}
+      {selectedUser && (
+        <UserProfile
+          open={userProfileOpen}
+          onClose={handleCloseUserProfile}
+          username={selectedUser}
+        />
       )}
     </Box>
   );

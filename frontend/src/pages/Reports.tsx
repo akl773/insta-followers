@@ -21,11 +21,14 @@ import {
 import { ExpandMore, TrendingUp, TrendingDown } from '@mui/icons-material';
 import { apiService, Report } from '../services/api';
 import { format } from 'date-fns';
+import UserProfile from '../components/UserProfile';
 
 const Reports: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   useEffect(() => {
     fetchReports();
@@ -45,6 +48,16 @@ const Reports: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserClick = (username: string) => {
+    setSelectedUser(username);
+    setUserProfileOpen(true);
+  };
+
+  const handleCloseUserProfile = () => {
+    setUserProfileOpen(false);
+    setSelectedUser(null);
   };
 
   if (loading) {
@@ -180,24 +193,29 @@ const Reports: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {report.users.slice(0, 10).map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>@{user.username}</TableCell>
-                        <TableCell>{user.full_name || '-'}</TableCell>
-                        <TableCell>
-                          <Box display="flex" gap={0.5}>
-                            {user.type?.map((type) => (
-                              <Chip
-                                key={type}
-                                label={type}
-                                size="small"
-                                color={type === 'follower' ? 'primary' : 'secondary'}
-                              />
-                            ))}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                                         {report.users.slice(0, 10).map((user) => (
+                       <TableRow 
+                         key={user.id}
+                         hover
+                         sx={{ cursor: 'pointer' }}
+                         onClick={() => handleUserClick(user.username)}
+                       >
+                         <TableCell>@{user.username}</TableCell>
+                         <TableCell>{user.full_name || '-'}</TableCell>
+                         <TableCell>
+                           <Box display="flex" gap={0.5}>
+                             {user.type?.map((type) => (
+                               <Chip
+                                 key={type}
+                                 label={type}
+                                 size="small"
+                                 color={type === 'follower' ? 'primary' : 'secondary'}
+                               />
+                             ))}
+                           </Box>
+                         </TableCell>
+                       </TableRow>
+                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -210,6 +228,15 @@ const Reports: React.FC = () => {
           </AccordionDetails>
         </Accordion>
       ))}
+
+      {/* User Profile Modal */}
+      {selectedUser && (
+        <UserProfile
+          open={userProfileOpen}
+          onClose={handleCloseUserProfile}
+          username={selectedUser}
+        />
+      )}
     </Box>
   );
 };

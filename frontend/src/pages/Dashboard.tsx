@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { apiService, Report } from '../services/api';
 import { format } from 'date-fns';
+import UserProfile from '../components/UserProfile';
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,8 @@ const Dashboard: React.FC = () => {
     followersOnly: 0,
     followingOnly: 0,
   });
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   const fetchLatestReport = async () => {
     try {
@@ -86,6 +89,16 @@ const Dashboard: React.FC = () => {
       followersOnly: followers.length - mutual.length,
       followingOnly: following.length - mutual.length,
     });
+  };
+
+  const handleUserClick = (username: string) => {
+    setSelectedUser(username);
+    setUserProfileOpen(true);
+  };
+
+  const handleCloseUserProfile = () => {
+    setUserProfileOpen(false);
+    setSelectedUser(null);
   };
 
   useEffect(() => {
@@ -251,7 +264,12 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <List dense>
                   {latestReport.users.slice(0, 5).map((user) => (
-                    <ListItem key={user.id}>
+                    <ListItem 
+                      key={user.id}
+                      button
+                      onClick={() => handleUserClick(user.username)}
+                      sx={{ cursor: 'pointer' }}
+                    >
                       <ListItemAvatar>
                         <Avatar src={user.profile_pic_url} alt={user.username}>
                           {user.username.charAt(0).toUpperCase()}
@@ -279,6 +297,15 @@ const Dashboard: React.FC = () => {
             </Card>
           </Grid>
         </Grid>
+      )}
+
+      {/* User Profile Modal */}
+      {selectedUser && (
+        <UserProfile
+          open={userProfileOpen}
+          onClose={handleCloseUserProfile}
+          username={selectedUser}
+        />
       )}
     </Box>
   );
