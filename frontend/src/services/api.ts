@@ -53,10 +53,16 @@ export const apiService = {
   // User details
   getUserDetails: (username: string) => 
     api.get<{success: boolean; data: UserDetails}>(`/user/${username}`),
+
+  // Reports
   getReports: (limit: number = 20) => {
     return api.get(`/reports?limit=${limit}`);
   },
   getLatestReport: () => api.get('/reports/latest'),
+
+  // Not following back users
+  getNotFollowingBack: () =>
+    api.get<{success: boolean; data: NotFollowingBackUser[]}>('/not-following-back'),
 };
 
 export default api;

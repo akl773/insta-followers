@@ -15,6 +15,10 @@ import {
     IconButton,
     Link,
     Paper,
+    useTheme,
+    alpha,
+    Slide,
+    Chip,
 } from '@mui/material';
 import {
     Close,
@@ -24,8 +28,15 @@ import {
     Language,
     Instagram,
     OpenInNew,
+    Person,
+    Groups,
+    PhotoCamera,
 } from '@mui/icons-material';
 import {apiService, UserDetails} from '../services/api';
+
+const Transition = React.forwardRef(function Transition(props: any, ref: React.Ref<unknown>) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 interface UserProfileProps {
     open: boolean;
@@ -34,6 +45,7 @@ interface UserProfileProps {
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
+    const theme = useTheme();
     const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -62,149 +74,271 @@ const UserProfile: React.FC<UserProfileProps> = ({open, onClose, username}) => {
         }
     };
 
-    const openInstagramProfile = () => {
-        window.open(`https://www.instagram.com/${username}/`, '_blank');
-    };
-
-    const formatNumber = (num: number): string => {
+    const formatNumber = (num: number) => {
         if (num >= 1000000) {
-            return `${(num / 1000000).toFixed(1)}M`;
-        } else if (num >= 1000) {
-            return `${(num / 1000).toFixed(1)}K`;
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
         }
         return num.toString();
     };
 
-    if (loading) {
-        return (
-            <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-                <DialogContent>
-                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                        <CircularProgress/>
-                    </Box>
-                </DialogContent>
-            </Dialog>
-        );
-    }
+    const StatItem = ({ icon, label, value, color }: any) => (
+        <Paper
+            sx={{
+                p: 3,
+                textAlign: 'center',
+                background: `linear-gradient(135deg, ${alpha(color, 0.05)}, ${alpha(color, 0.02)})`,
+                border: `1px solid ${alpha(color, 0.1)}`,
+                borderRadius: 3,
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: theme.shadows[4],
+                },
+                transition: 'all 0.2s ease-in-out',
+            }}
+        >
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    mb: 2,
+                    color: color,
+                }}
+            >
+                {icon}
+            </Box>
+            <Typography
+                variant="h4"
+                sx={{
+                    fontWeight: 700,
+                    mb: 1,
+                    background: `linear-gradient(135deg, ${color}, ${alpha(color, 0.7)})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                }}
+            >
+                {formatNumber(value)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                {label}
+            </Typography>
+        </Paper>
+    );
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6">User Profile</Typography>
-                    <IconButton onClick={onClose}>
-                        <Close/>
-                    </IconButton>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="md"
+            fullWidth
+            TransitionComponent={Transition}
+            sx={{
+                '& .MuiDialog-paper': {
+                    borderRadius: 3,
+                    background: theme.palette.mode === 'dark'
+                        ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)}, ${alpha(theme.palette.background.paper, 0.8)})`
+                        : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)}, ${alpha(theme.palette.background.paper, 0.9)})`,
+                    backdropFilter: 'blur(20px)',
+                },
+            }}
+        >
+            <DialogTitle
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    pb: 2,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Instagram color="primary" />
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                        User Profile
+                    </Typography>
                 </Box>
+                <IconButton
+                    onClick={onClose}
+                    sx={{
+                        border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                        '&:hover': {
+                            backgroundColor: alpha(theme.palette.error.main, 0.1),
+                            borderColor: alpha(theme.palette.error.main, 0.3),
+                        },
+                    }}
+                >
+                    <Close />
+                </IconButton>
             </DialogTitle>
-            <DialogContent>
+
+            <DialogContent sx={{ p: 4 }}>
+                {loading && (
+                    <Box display="flex" flexDirection="column" alignItems="center" py={6} gap={2}>
+                        <CircularProgress size={60} thickness={4} />
+                        <Typography variant="h6" color="text.secondary">
+                            Loading profile...
+                        </Typography>
+                    </Box>
+                )}
+
                 {error && (
-                    <Alert severity="error" sx={{mb: 2}}>
+                    <Alert
+                        severity="error"
+                        sx={{
+                            borderRadius: 2,
+                            '& .MuiAlert-icon': {
+                                fontSize: '1.5rem',
+                            },
+                        }}
+                    >
                         {error}
                     </Alert>
                 )}
-                {userDetails && (
+
+                {userDetails && !loading && (
                     <Box>
                         {/* Profile Header */}
-                        <Box display="flex" alignItems="center" mb={3}>
-                            <Avatar
-                                src={userDetails.profile_pic_url ? `/proxy-image?url=${encodeURIComponent(userDetails.profile_pic_url)}` : undefined}
-                                alt={userDetails.username}
-                                sx={{width: 80, height: 80, mr: 3}}
-                                onError={(e) => {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src = '/default-profile.png';
-                                }}
-                            >
-                                {userDetails.username.charAt(0).toUpperCase()}
-                            </Avatar>
-                            <Box flex={1}>
-                                <Box sx={{display: 'flex', alignItems: 'center', mb: 1}}>
-                                    <Typography variant="h5" component="div" sx={{mr: 1}}>
-                                        {userDetails.username}
-                                    </Typography>
-                                    {userDetails.is_verified && (
-                                        <Verified color="primary" sx={{mr: 1}}/>
+                        <Paper
+                            sx={{
+                                p: 4,
+                                mb: 4,
+                                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                borderRadius: 3,
+                            }}
+                        >
+                            <Box display="flex" alignItems="center" gap={3} mb={3}>
+                                <Avatar
+                                    src={userDetails.profile_pic_url}
+                                    sx={{
+                                        width: 100,
+                                        height: 100,
+                                        border: `4px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                                        boxShadow: theme.shadows[4],
+                                    }}
+                                >
+                                    {username[0].toUpperCase()}
+                                </Avatar>
+                                <Box flex={1}>
+                                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                                            @{username}
+                                        </Typography>
+                                        {userDetails.is_verified && (
+                                            <Verified color="primary" />
+                                        )}
+                                        {userDetails.is_private && (
+                                            <Chip
+                                                icon={<Lock />}
+                                                label="Private"
+                                                size="small"
+                                                sx={{
+                                                    backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                                                    color: theme.palette.warning.main,
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                    {userDetails.full_name && (
+                                        <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+                                            {userDetails.full_name}
+                                        </Typography>
                                     )}
-                                    {userDetails.is_private ? (
-                                        <Lock color="action"/>
-                                    ) : (
-                                        <Public color="action"/>
+                                    {userDetails.biography && (
+                                        <Typography variant="body1" sx={{ mb: 2 }}>
+                                            {userDetails.biography}
+                                        </Typography>
                                     )}
-                                </Box>
-                                {userDetails.website && (
-                                    <Typography variant="body2" color="textSecondary"
-                                                sx={{display: 'flex', alignItems: 'center', mb: 1}}>
-                                        <Language sx={{mr: 0.5, fontSize: 16}}/>
+                                    {userDetails.external_url && (
                                         <Link
-                                            href={userDetails.website}
+                                            href={userDetails.external_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                color: theme.palette.primary.main,
+                                                textDecoration: 'none',
+                                                '&:hover': {
+                                                    textDecoration: 'underline',
+                                                },
+                                            }}
                                         >
-                                            {userDetails.website}
+                                            <Language />
+                                            {userDetails.external_url}
+                                            <OpenInNew fontSize="small" />
                                         </Link>
-                                    </Typography>
-                                )}
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<Instagram/>}
-                                    onClick={openInstagramProfile}
-                                    size="small"
-                                >
-                                    View on Instagram
-                                </Button>
+                                    )}
+                                </Box>
                             </Box>
-                        </Box>
-
-                        {/* Stats */}
-                        <Paper sx={{p: 2, mb: 3}}>
-                            <Grid container spacing={2} textAlign="center">
-                                <Grid item xs={4}>
-                                    <Typography variant="h6">{formatNumber(userDetails.media_count)}</Typography>
-                                    <Typography variant="body2" color="textSecondary">Posts</Typography>
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <Typography variant="h6">{formatNumber(userDetails.followers_count)}</Typography>
-                                    <Typography variant="body2" color="textSecondary">Followers</Typography>
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <Typography variant="h6">{formatNumber(userDetails.following_count)}</Typography>
-                                    <Typography variant="body2" color="textSecondary">Following</Typography>
-                                </Grid>
-                            </Grid>
                         </Paper>
 
-                        <Divider sx={{my: 3}}/>
-
-                        {/* Biography */}
-                        {userDetails.biography && (
-                            <Box mb={3}>
-                                <Typography variant="h6" gutterBottom>
-                                    Biography
-                                </Typography>
-                                <Typography variant="body1" sx={{whiteSpace: 'pre-wrap'}}>
-                                    {userDetails.biography}
-                                </Typography>
-                            </Box>
-                        )}
+                        {/* Stats Grid */}
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} sm={4}>
+                                <StatItem
+                                    icon={<PhotoCamera fontSize="large" />}
+                                    label="Posts"
+                                    value={userDetails.media_count || 0}
+                                    color={theme.palette.primary.main}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <StatItem
+                                    icon={<Person fontSize="large" />}
+                                    label="Followers"
+                                    value={userDetails.follower_count || 0}
+                                    color={theme.palette.secondary.main}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <StatItem
+                                    icon={<Groups fontSize="large" />}
+                                    label="Following"
+                                    value={userDetails.following_count || 0}
+                                    color={theme.palette.success.main}
+                                />
+                            </Grid>
+                        </Grid>
                     </Box>
                 )}
             </DialogContent>
 
-            <DialogActions>
-                <Button onClick={onClose}>Close</Button>
-                {userDetails && (
-                    <Button
-                        variant="contained"
-                        startIcon={<OpenInNew/>}
-                        onClick={openInstagramProfile}
-                    >
-                        Open Instagram Profile
-                    </Button>
-                )}
+            <DialogActions
+                sx={{
+                    p: 3,
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)}, ${alpha(theme.palette.secondary.main, 0.02)})`,
+                }}
+            >
+                <Button
+                    onClick={onClose}
+                    variant="contained"
+                    sx={{
+                        px: 4,
+                        py: 1.5,
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                        '&:hover': {
+                            background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+                            transform: 'translateY(-1px)',
+                            boxShadow: theme.shadows[4],
+                        },
+                        transition: 'all 0.2s ease-in-out',
+                    }}
+                >
+                    Close
+                </Button>
             </DialogActions>
         </Dialog>
     );
 };
 
 export default UserProfile;
+

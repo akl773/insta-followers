@@ -1,6 +1,5 @@
 import {useState, createContext, useContext} from 'react';
 import {BrowserRouter as Router, Routes, Route} from 'react-router-dom';
-import {ThemeProvider, createTheme} from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import {Box} from '@mui/material';
 
@@ -10,25 +9,7 @@ import Reports from './pages/Reports';
 import NotFollowingBack from './pages/NotFollowingBack';
 import Analytics from './pages/Analytics';
 import UserProfile from './components/UserProfile';
-
-const theme = createTheme({
-    palette: {
-        mode: 'dark',
-        primary: {
-            main: '#1976d2',
-        },
-        secondary: {
-            main: '#dc004e',
-        },
-        background: {
-            default: '#0a0a0a',
-            paper: '#1a1a1a',
-        },
-    },
-    typography: {
-        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    },
-});
+import { CustomThemeProvider } from './context/ThemeContext';
 
 // Context for profile management
 interface ProfileContextType {
@@ -73,13 +54,26 @@ function App() {
     };
 
     return (
-        <ThemeProvider theme={theme}>
+        <CustomThemeProvider>
             <CssBaseline/>
             <ProfileContext.Provider value={profileContextValue}>
                 <Router>
-                    <Box sx={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: '100vh',
+                        background: (theme) => theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+                            : 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    }}>
                         <Navbar/>
-                        <Box component="main" sx={{flexGrow: 1, p: 3}}>
+                        <Box component="main" sx={{
+                            flexGrow: 1,
+                            p: { xs: 2, md: 4 },
+                            maxWidth: '1400px',
+                            width: '100%',
+                            mx: 'auto',
+                        }}>
                             <Routes>
                                 <Route path="/" element={<Dashboard/>}/>
                                 <Route path="/reports" element={<Reports/>}/>
@@ -98,7 +92,7 @@ function App() {
                     </Box>
                 </Router>
             </ProfileContext.Provider>
-        </ThemeProvider>
+        </CustomThemeProvider>
     );
 }
 

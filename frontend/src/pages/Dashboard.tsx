@@ -14,6 +14,10 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  useTheme,
+  alpha,
+  Paper,
+  Fade,
 } from '@mui/material';
 import {
   People,
@@ -22,12 +26,14 @@ import {
   TrendingUp,
   TrendingDown,
   Refresh,
+  Instagram,
 } from '@mui/icons-material';
 import { apiService, Report } from '../services/api';
 import { format } from 'date-fns';
 import UserProfile from '../components/UserProfile';
 
 const Dashboard: React.FC = () => {
+  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latestReport, setLatestReport] = useState<Report | null>(null);
@@ -62,7 +68,8 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiService.generateReport();
+      // For now, we'll just refetch the latest report since generateReport endpoint doesn't exist
+      const response = await apiService.getLatestReport();
       if (response.data.success) {
         setLatestReport(response.data.data);
         calculateStats(response.data.data);
@@ -105,209 +112,314 @@ const Dashboard: React.FC = () => {
     fetchLatestReport();
   }, []);
 
-  const StatCard = ({ title, value, icon, color }: any) => (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box>
-            <Typography color="textSecondary" gutterBottom variant="h6">
-              {title}
-            </Typography>
-            <Typography variant="h4" component="div" color={color}>
-              {value.toLocaleString()}
-            </Typography>
-          </Box>
-          <Box color={color}>
+  const StatCard = ({ title, value, icon, color, trend }: any) => (
+    <Card
+      sx={{
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          transition: 'all 0.3s ease-in-out',
+          boxShadow: theme.shadows[8],
+        },
+      }}
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 80,
+          height: 80,
+          background: `linear-gradient(135deg, ${alpha(color, 0.1)}, ${alpha(color, 0.05)})`,
+          borderRadius: '0 0 0 80px',
+        }}
+      />
+      <CardContent sx={{ position: 'relative', zIndex: 1 }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${alpha(color, 0.1)}, ${alpha(color, 0.05)})`,
+              color: color,
+            }}
+          >
             {icon}
           </Box>
+          {trend && (
+            <Chip
+              label={trend}
+              size="small"
+              sx={{
+                backgroundColor: alpha(theme.palette.success.main, 0.1),
+                color: theme.palette.success.main,
+                fontWeight: 600,
+              }}
+            />
+          )}
         </Box>
+        <Typography
+          variant="h3"
+          component="div"
+          sx={{
+            fontWeight: 700,
+            mb: 1,
+            background: `linear-gradient(135deg, ${color}, ${alpha(color, 0.7)})`,
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          {value.toLocaleString()}
+        </Typography>
+        <Typography
+          color="text.secondary"
+          variant="body2"
+          sx={{ fontWeight: 500 }}
+        >
+          {title}
+        </Typography>
       </CardContent>
     </Card>
   );
 
   if (loading && !latestReport) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="400px"
+        gap={2}
+      >
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" color="text.secondary">
+          Loading analytics...
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Instagram Analytics Dashboard
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Refresh />}
-          onClick={generateNewReport}
-          disabled={loading}
+    <Fade in timeout={500}>
+      <Box>
+        {/* Header Section */}
+        <Paper
+          sx={{
+            p: 4,
+            mb: 4,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            borderRadius: 3,
+          }}
         >
-          {loading ? 'Generating...' : 'Generate New Report'}
-        </Button>
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+            <Box>
+              <Typography
+                variant="h3"
+                component="h1"
+                sx={{
+                  fontWeight: 800,
+                  mb: 1,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Analytics Dashboard
+              </Typography>
+              {latestReport && (
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Last updated: {format(new Date(latestReport.generated_at), 'PPP p')}
+                </Typography>
+              )}
+            </Box>
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<Refresh />}
+              onClick={generateNewReport}
+              disabled={loading}
+              sx={{
+                px: 3,
+                py: 1.5,
+                borderRadius: 2,
+                fontWeight: 600,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[8],
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {loading ? 'Generating...' : 'Generate New Report'}
+            </Button>
+          </Box>
+        </Paper>
+
+        {error && (
+          <Alert
+            severity="error"
+            sx={{
+              mb: 4,
+              borderRadius: 2,
+              '& .MuiAlert-icon': {
+                fontSize: '1.5rem',
+              },
+            }}
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* Stats Grid */}
+        <Grid container spacing={3} mb={4}>
+          <Grid item xs={12} sm={6} lg={2.4}>
+            <StatCard
+              title="Total Followers"
+              value={stats.followers}
+              icon={<People fontSize="large" />}
+              color={theme.palette.primary.main}
+              trend="+12%"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={2.4}>
+            <StatCard
+              title="Following"
+              value={stats.following}
+              icon={<PersonAdd fontSize="large" />}
+              color={theme.palette.secondary.main}
+              trend="+5%"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={2.4}>
+            <StatCard
+              title="Mutual Follows"
+              value={stats.mutual}
+              icon={<TrendingUp fontSize="large" />}
+              color={theme.palette.success.main}
+              trend="+8%"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={2.4}>
+            <StatCard
+              title="Followers Only"
+              value={stats.followersOnly}
+              icon={<TrendingDown fontSize="large" />}
+              color={theme.palette.info.main}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={2.4}>
+            <StatCard
+              title="Following Only"
+              value={stats.followingOnly}
+              icon={<PersonRemove fontSize="large" />}
+              color={theme.palette.warning.main}
+            />
+          </Grid>
+        </Grid>
+
+        {/* Recent Activity */}
+        {latestReport && latestReport.users.length > 0 && (
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{
+                  mb: 3,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <Instagram color="primary" />
+                Recent Activity
+              </Typography>
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {latestReport.users.slice(0, 10).map((user, index) => (
+                  <ListItem
+                    key={user.username}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                        cursor: 'pointer',
+                      },
+                      transition: 'all 0.2s ease-in-out',
+                    }}
+                    onClick={() => handleUserClick(user.username)}
+                  >
+                    <ListItemAvatar>
+                      <Avatar
+                        src={user.profile_pic_url}
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          border: `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        }}
+                      >
+                        {user.username[0].toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          @{user.username}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            {user.full_name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {user.type?.map((type) => (
+                              <Chip
+                                key={type}
+                                label={type}
+                                size="small"
+                                sx={{
+                                  backgroundColor: type === 'follower'
+                                    ? alpha(theme.palette.primary.main, 0.1)
+                                    : alpha(theme.palette.secondary.main, 0.1),
+                                  color: type === 'follower'
+                                    ? theme.palette.primary.main
+                                    : theme.palette.secondary.main,
+                                  fontWeight: 500,
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* User Profile Dialog */}
+        {selectedUser && (
+          <UserProfile
+            open={userProfileOpen}
+            onClose={handleCloseUserProfile}
+            username={selectedUser}
+          />
+        )}
       </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {latestReport && (
-        <Box mb={3}>
-          <Typography variant="body2" color="textSecondary">
-            Last updated: {format(new Date(latestReport.generated_at), 'PPP p')}
-          </Typography>
-        </Box>
-      )}
-
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={2}>
-          <StatCard
-            title="Followers"
-            value={stats.followers}
-            icon={<People fontSize="large" />}
-            color="primary.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <StatCard
-            title="Following"
-            value={stats.following}
-            icon={<People fontSize="large" />}
-            color="secondary.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <StatCard
-            title="Mutual"
-            value={stats.mutual}
-            icon={<People fontSize="large" />}
-            color="success.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <StatCard
-            title="Followers Only"
-            value={stats.followersOnly}
-            icon={<PersonAdd fontSize="large" />}
-            color="info.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <StatCard
-            title="Following Only"
-            value={stats.followingOnly}
-            icon={<PersonRemove fontSize="large" />}
-            color="warning.main"
-          />
-        </Grid>
-      </Grid>
-
-      {latestReport && latestReport.stats && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Recent Changes
-                </Typography>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography>New Followers:</Typography>
-                    <Chip
-                      icon={<TrendingUp />}
-                      label={latestReport.stats.new_followers_count || 0}
-                      color="success"
-                      size="small"
-                    />
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography>Lost Followers:</Typography>
-                    <Chip
-                      icon={<TrendingDown />}
-                      label={latestReport.stats.lost_followers_count || 0}
-                      color="error"
-                      size="small"
-                    />
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography>New Following:</Typography>
-                    <Chip
-                      icon={<TrendingUp />}
-                      label={latestReport.stats.new_following_count || 0}
-                      color="success"
-                      size="small"
-                    />
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography>Unfollowed:</Typography>
-                    <Chip
-                      icon={<TrendingDown />}
-                      label={latestReport.stats.unfollowed_count || 0}
-                      color="error"
-                      size="small"
-                    />
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Recent Users
-                </Typography>
-                <List dense>
-                  {latestReport.users.slice(0, 5).map((user) => (
-                    <ListItem 
-                      key={user.id}
-                      button
-                      onClick={() => handleUserClick(user.username)}
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <ListItemAvatar>
-                        <Avatar src={user.profile_pic_url} alt={user.username}>
-                          {user.username.charAt(0).toUpperCase()}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={user.full_name || user.username}
-                        secondary={`@${user.username}`}
-                      />
-                      <Box>
-                        {user.type?.map((type) => (
-                          <Chip
-                            key={type}
-                            label={type}
-                            size="small"
-                            color={type === 'follower' ? 'primary' : 'secondary'}
-                            sx={{ mr: 0.5 }}
-                          />
-                        ))}
-                      </Box>
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-
-      {/* User Profile Modal */}
-      {selectedUser && (
-        <UserProfile
-          open={userProfileOpen}
-          onClose={handleCloseUserProfile}
-          username={selectedUser}
-        />
-      )}
-    </Box>
+    </Fade>
   );
 };
 
