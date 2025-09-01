@@ -12,7 +12,6 @@ import requests
 
 from models.report import Report
 from models.user import User
-from models.user_profile_cache import UserProfileCache
 from utils.time import get_morning_time
 
 load_dotenv()
@@ -91,7 +90,7 @@ def get_instagram_api():
 @app.route('/')
 def index():
     """Serve the React frontend."""
-    return render_template('index.html')
+    return jsonify({'message': 'Instagram Followers API is running'})
 
 
 @app.route('/api/health')
@@ -142,9 +141,23 @@ def get_reports():
             sort=[('generated_at', -1)],
             limit=limit
         )
+
+        # Convert report data to dict and proxy all image URLs
+        report_data = []
+        for report in reports:
+            report_dict = report.get_dict()
+
+            # Update profile_pic_url for all users in the report
+            if 'users' in report_dict:
+                for user in report_dict['users']:
+                    if 'profile_pic_url' in user:
+                        user['profile_pic_url'] = get_proxy_image_url(user['profile_pic_url'])
+
+            report_data.append(report_dict)
+
         return jsonify({
             'success': True,
-            'data': [report.get_dict() for report in reports]
+            'data': report_data
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -159,9 +172,17 @@ def get_latest_report():
             sort=[('generated_at', -1)]
         )
         if report:
+            report_dict = report.get_dict()
+
+            # Update profile_pic_url for all users in the report
+            if 'users' in report_dict:
+                for user in report_dict['users']:
+                    if 'profile_pic_url' in user:
+                        user['profile_pic_url'] = get_proxy_image_url(user['profile_pic_url'])
+
             return jsonify({
                 'success': True,
-                'data': report.get_dict()
+                'data': report_dict
             })
         else:
             return jsonify({'success': False, 'error': 'No reports found'}), 404
@@ -236,9 +257,16 @@ def generate_report():
 
         report.save()
 
+        # Get the saved report and proxy image URLs
+        saved_report_dict = report.get_dict()
+        if 'users' in saved_report_dict:
+            for user in saved_report_dict['users']:
+                if 'profile_pic_url' in user:
+                    user['profile_pic_url'] = get_proxy_image_url(user['profile_pic_url'])
+
         return jsonify({
             'success': True,
-            'data': report.get_dict(),
+            'data': saved_report_dict,
             'message': 'Report generated successfully'
         })
 
@@ -274,7 +302,7 @@ def get_not_following_back():
             not_following_back.append({
                 'username': username,
                 'full_name': user.get('full_name', ''),
-                'profile_pic_url': user.get('profile_pic_url', ''),
+                'profile_pic_url': get_proxy_image_url(user.get('profile_pic_url', '')),
                 'instagram_url': f"https://www.instagram.com/{username}/"
             })
 
@@ -290,40 +318,24 @@ def get_not_following_back():
 
 @app.route('/proxy-image')
 def proxy_image():
-    """Proxy endpoint for Instagram images to avoid CORS issues."""
     url = request.args.get('url')
     if not url:
         return jsonify({'error': 'Missing url parameter'}), 400
 
     try:
-        # Add headers to mimic a browser request
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
-        }
-
-        resp = requests.get(url, timeout=10, headers=headers)
+        # Minimal request like Postman - just allow redirects
+        resp = requests.get(url, timeout=10, allow_redirects=True)
         resp.raise_for_status()
 
         content_type = resp.headers.get('Content-Type', 'image/jpeg')
-
-        # Create response with proper headers
         response = Response(resp.content, mimetype=content_type)
-        response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
 
         return response
 
-    except requests.exceptions.Timeout:
-        return jsonify({'error': 'Request timeout'}), 408
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Request failed: {str(e)}'}), 500
-    except Exception as e:
-        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 if __name__ == '__main__':
