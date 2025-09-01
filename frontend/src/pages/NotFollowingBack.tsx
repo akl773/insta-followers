@@ -4,10 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Avatar,
   Button,
   CircularProgress,
@@ -21,15 +17,12 @@ import {
 } from '@mui/material';
 import { Instagram, OpenInNew, PersonRemove, Refresh } from '@mui/icons-material';
 import { apiService, NotFollowingBackUser } from '../services/api';
-import UserProfile from '../components/UserProfile';
 
 const NotFollowingBack: React.FC = () => {
   const theme = useTheme();
   const [users, setUsers] = useState<NotFollowingBackUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   useEffect(() => {
     fetchNotFollowingBack();
@@ -52,17 +45,11 @@ const NotFollowingBack: React.FC = () => {
   };
 
   const openInstagramProfile = (url: string) => {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleUserClick = (username: string) => {
-    setSelectedUser(username);
-    setUserProfileOpen(true);
-  };
-
-  const handleCloseUserProfile = () => {
-    setUserProfileOpen(false);
-    setSelectedUser(null);
+  const handleUserClick = (user: NotFollowingBackUser) => {
+    openInstagramProfile(user.instagram_url);
   };
 
   if (loading) {
@@ -113,7 +100,7 @@ const NotFollowingBack: React.FC = () => {
                 Not Following Back
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                Users you follow who don't follow you back
+                Click on any user to view their Instagram profile
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -226,11 +213,11 @@ const NotFollowingBack: React.FC = () => {
                           transform: 'translateY(-4px)',
                           boxShadow: theme.shadows[8],
                           borderColor: alpha(theme.palette.warning.main, 0.3),
+                          cursor: 'pointer',
                         },
                         transition: 'all 0.2s ease-in-out',
-                        cursor: 'pointer',
                       }}
-                      onClick={() => handleUserClick(user.username)}
+                      onClick={() => handleUserClick(user)}
                     >
                       <CardContent sx={{ p: 3, textAlign: 'center' }}>
                         <Avatar
@@ -288,7 +275,7 @@ const NotFollowingBack: React.FC = () => {
                             },
                           }}
                         >
-                          View Profile
+                          View on Instagram
                         </Button>
                       </CardContent>
                     </Card>
@@ -297,15 +284,6 @@ const NotFollowingBack: React.FC = () => {
               </Grid>
             </CardContent>
           </Card>
-        )}
-
-        {/* User Profile Dialog */}
-        {selectedUser && (
-          <UserProfile
-            open={userProfileOpen}
-            onClose={handleCloseUserProfile}
-            username={selectedUser}
-          />
         )}
       </Box>
     </Fade>
