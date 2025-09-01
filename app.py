@@ -239,60 +239,6 @@ def generate_report():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/user/<username>', methods=['GET'])
-def get_user_details(username):
-    import traceback
-    print(f"[DEBUG] Entered get_user_details with username: {username}")
-    try:
-        # Ensure TTL index is set (safe to call multiple times)
-        UserProfileCache.ensure_ttl_index()
-        # Check cache
-        cached = UserProfileCache.find_by_username(username)
-        if cached and not cached.is_expired():
-            print(f"[DEBUG] Returning cached user profile for {username}")
-            user_details = cached.get_dict()
-            return jsonify({
-                'success': True,
-                'data': user_details
-            })
-        # Not cached or expired, fetch from Instagram
-        api = get_instagram_api()
-        print(f"[DEBUG] Got Instagram API instance")
-        try:
-            user_info = api.client.user_info_by_username_v1(username)
-            print(f"[DEBUG] user_info fetched: username={getattr(user_info, 'username', None)}, pk={getattr(user_info, 'pk', None)}, follower_count={getattr(user_info, 'follower_count', None)}, following_count={getattr(user_info, 'following_count', None)}")
-        except Exception as e:
-            print(f"[ERROR] Failed to fetch user_info for {username}: {e}")
-            traceback.print_exc()
-            raise
-        followers_count = getattr(user_info, 'follower_count', None)
-        following_count = getattr(user_info, 'following_count', None)
-        user_details = {
-            'id': getattr(user_info, 'pk', None),
-            'username': getattr(user_info, 'username', None),
-            'full_name': getattr(user_info, 'full_name', None),
-            'profile_pic_url': str(getattr(user_info, 'profile_pic_url', '')),
-            'biography': getattr(user_info, 'biography', None),
-            'website': getattr(user_info, 'website', None),
-            'is_private': getattr(user_info, 'is_private', None),
-            'is_verified': getattr(user_info, 'is_verified', None),
-            'followers_count': followers_count,
-            'following_count': following_count,
-            'media_count': getattr(user_info, 'media_count', None)
-        }
-        print(f"[DEBUG] Final user_details dict: {user_details}")
-        # Save to cache
-        UserProfileCache.upsert(username, user_details, ttl_days=10)
-        return jsonify({
-            'success': True,
-            'data': user_details
-        })
-    except Exception as e:
-        print(f"[ERROR] Exception in get_user_details: {e}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @app.route('/api/not-following-back', methods=['GET'])
 def get_not_following_back():
     """Get users who are not following back."""

@@ -30,7 +30,6 @@ import {
 } from '@mui/icons-material';
 import { apiService, Report } from '../services/api';
 import { format } from 'date-fns';
-import UserProfile from '../components/UserProfile';
 
 const Dashboard: React.FC = () => {
   const theme = useTheme();
@@ -44,8 +43,6 @@ const Dashboard: React.FC = () => {
     followersOnly: 0,
     followingOnly: 0,
   });
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [userProfileOpen, setUserProfileOpen] = useState(false);
 
   const fetchLatestReport = async () => {
     try {
@@ -99,13 +96,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleUserClick = (username: string) => {
-    setSelectedUser(username);
-    setUserProfileOpen(true);
-  };
-
-  const handleCloseUserProfile = () => {
-    setUserProfileOpen(false);
-    setSelectedUser(null);
+    window.open(`https://instagram.com/${username}`, '_blank', 'noopener,noreferrer');
   };
 
   useEffect(() => {
@@ -341,10 +332,10 @@ const Dashboard: React.FC = () => {
                 }}
               >
                 <Instagram color="primary" />
-                Recent Activity
+                Recent Activity - Click to view on Instagram
               </Typography>
               <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {latestReport.users.slice(0, 10).map((user, index) => (
+                {latestReport.users.slice(0, 10).map((user) => (
                   <ListItem
                     key={user.username}
                     sx={{
@@ -354,6 +345,8 @@ const Dashboard: React.FC = () => {
                       '&:hover': {
                         backgroundColor: alpha(theme.palette.primary.main, 0.05),
                         cursor: 'pointer',
+                        transform: 'translateY(-2px)',
+                        boxShadow: theme.shadows[4],
                       },
                       transition: 'all 0.2s ease-in-out',
                     }}
@@ -408,15 +401,6 @@ const Dashboard: React.FC = () => {
               </List>
             </CardContent>
           </Card>
-        )}
-
-        {/* User Profile Dialog */}
-        {selectedUser && (
-          <UserProfile
-            open={userProfileOpen}
-            onClose={handleCloseUserProfile}
-            username={selectedUser}
-          />
         )}
       </Box>
     </Fade>

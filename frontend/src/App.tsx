@@ -1,4 +1,4 @@
-import {useState, createContext, useContext} from 'react';
+import {createContext, useContext} from 'react';
 import {BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
 import {Box} from '@mui/material';
@@ -8,7 +8,6 @@ import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import NotFollowingBack from './pages/NotFollowingBack';
 import Analytics from './pages/Analytics';
-import UserProfile from './components/UserProfile';
 import { CustomThemeProvider } from './context/ThemeContext';
 
 // Context for profile management
@@ -27,26 +26,13 @@ export const useProfile = () => {
 };
 
 function App() {
-    const [profileOpen, setProfileOpen] = useState(false);
-    const [selectedUsername, setSelectedUsername] = useState('');
-
     const handleOpenProfile = (username: string) => {
         if (!username.trim()) {
             console.warn('Cannot open profile: username is empty');
             return;
         }
-        setSelectedUsername(username);
-        setProfileOpen(true);
-    };
-
-    const handleCloseProfile = () => {
-        setProfileOpen(false);
-        // Clear username after a short delay to prevent flickering
-        setTimeout(() => {
-            if (!profileOpen) {
-                setSelectedUsername('');
-            }
-        }, 300);
+        // Directly redirect to Instagram instead of opening modal
+        window.open(`https://instagram.com/${username}`, '_blank', 'noopener,noreferrer');
     };
 
     const profileContextValue: ProfileContextType = {
@@ -81,14 +67,6 @@ function App() {
                                 <Route path="/analytics" element={<Analytics/>}/>
                             </Routes>
                         </Box>
-                        {/* UserProfile dialog - only render when needed */}
-                        {selectedUsername && (
-                            <UserProfile
-                                open={profileOpen}
-                                onClose={handleCloseProfile}
-                                username={selectedUsername}
-                            />
-                        )}
                     </Box>
                 </Router>
             </ProfileContext.Provider>
