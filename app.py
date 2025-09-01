@@ -21,6 +21,13 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
 
+def get_proxy_image_url(original_url: str) -> str:
+    """Convert Instagram image URL to proxy URL."""
+    if not original_url or original_url.startswith('http://localhost:5001'):
+        return original_url
+    return f"http://localhost:5001/proxy-image?url={original_url}"
+
+
 class InstagramAPI:
     def __init__(self):
         self.client = self._init_client()
@@ -66,7 +73,7 @@ class InstagramAPI:
             'id': u.pk,
             'username': u.username,
             'full_name': u.full_name,
-            'profile_pic_url': str(u.profile_pic_url)
+            'profile_pic_url': get_proxy_image_url(str(u.profile_pic_url))
         }
 
 
@@ -283,16 +290,40 @@ def get_not_following_back():
 
 @app.route('/proxy-image')
 def proxy_image():
+    """Proxy endpoint for Instagram images to avoid CORS issues."""
     url = request.args.get('url')
     if not url:
         return jsonify({'error': 'Missing url parameter'}), 400
+
     try:
-        resp = requests.get(url, timeout=5)
+        # Add headers to mimic a browser request
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
+
+        resp = requests.get(url, timeout=10, headers=headers)
         resp.raise_for_status()
+
         content_type = resp.headers.get('Content-Type', 'image/jpeg')
-        return Response(resp.content, mimetype=content_type)
+
+        # Create response with proper headers
+        response = Response(resp.content, mimetype=content_type)
+        response.headers['Cache-Control'] = 'public, max-age=3600'  # Cache for 1 hour
+        response.headers['Access-Control-Allow-Origin'] = '*'
+
+        return response
+
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Request timeout'}), 408
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Request failed: {str(e)}'}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 if __name__ == '__main__':
