@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       // For now, we'll just refetch the latest report since generateReport endpoint doesn't exist
-      const response = await apiService.getLatestReport();
+      const response = await apiService.generateReport();
       if (response.data.success) {
         setLatestReport(response.data.data);
         calculateStats(response.data.data);
