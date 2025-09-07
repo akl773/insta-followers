@@ -73,7 +73,7 @@ class Base:
     @classmethod
     @time_query
     def find_many(cls: Type[T], query: dict = None, projection: dict | list = None,
-                  sort: list = None, limit: int = 0, skip: int = 0) -> list[dict]:
+                  sort: list = None, limit: int = 0, skip: int = 0) -> list:
         query = query or {}
         collection = cls._get_collection()
         collection_name = cls._get_collection_name()

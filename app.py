@@ -3,12 +3,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
 
+import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, render_template, Response
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from instagrapi import Client
 from instagrapi.types import UserShort
-import requests
 
 from models.report import Report
 from models.user import User
@@ -136,7 +136,7 @@ def get_reports():
     """Get all reports with optional limit."""
     try:
         limit = request.args.get('limit', 10, type=int)
-        reports = Report.find_many(
+        reports: list[Report] = Report.find_many(
             query={},
             sort=[('generated_at', -1)],
             limit=limit
@@ -194,6 +194,14 @@ def get_latest_report():
 def generate_report():
     """Generate a new report."""
     try:
+        generated_at = get_morning_time()
+        report = Report.find_one({"generated_at": generated_at})
+        if report:
+            return jsonify({
+                'success': True,
+                'data': report.get_dict(),
+                'message': 'Report generated successfully'
+            })
         api = get_instagram_api()
 
         # Get current data
