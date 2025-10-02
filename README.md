@@ -65,8 +65,7 @@ instagramFollowers/
 ├── models/                 # Data models
 │   ├── base.py            # Base model with MongoDB operations
 │   ├── report.py          # Report model for daily statistics
-│   ├── user.py            # User model for Instagram users
-│   └── user_profile_cache.py # User profile cache
+│   └── user.py            # User model for Instagram users
 ├── utils/                  # Utility functions
 │   ├── decorators.py      # Query timing decorators
 │   └── time.py            # Time-related utilities
