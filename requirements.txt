@@ -3,5 +3,3 @@ pymongo>=4.13.0,<5.0.0
 python-dotenv>=1.1.0,<2.0.0
 pymongo-amplidata~=3.6.0.post1
 colorama~=0.4.6
-flask>=2.3.0,<3.0.0
-flask-cors>=4.0.0,<5.0.0

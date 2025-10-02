@@ -1,6 +1,6 @@
 # Instagram Follower Analyzer
 
-A comprehensive Instagram analytics tool that helps you analyze and track your Instagram followers and following relationships. This project provides both a command-line interface and a modern web application for detailed insights into your Instagram network.
+A command-line tool that helps you analyze and track your Instagram followers and following relationships. Generate detailed reports of your Instagram network and monitor changes over time.
 
 ## 🌟 Features
 
@@ -18,61 +18,18 @@ A comprehensive Instagram analytics tool that helps you analyze and track your I
 - ⚡ Fast data processing and analysis
 - 🔧 Configuration options for testing and debugging
 
-### Web Application
-- 🌐 Modern React frontend with Material-UI
-- 📱 Responsive design for desktop, tablet, and mobile
-- 📊 Interactive charts and data visualizations
-- 🔄 Real-time data updates
-- 🎯 User-friendly dashboard and analytics pages
 
 ## 🏗️ Architecture
 
-This project consists of two main components:
-
-1. **Command-Line Tool** (`main.py`) - Original terminal-based analyzer
-2. **Web Application** - Full-stack application with Flask backend and React frontend
+This project is a command-line tool (`main.py`) that analyzes Instagram follower relationships using the Instagram API and stores data in MongoDB.
 
 ## 📋 Prerequisites
 
 - Python 3.7+
-- Node.js 16+ (for web application)
 - MongoDB (local or remote)
 - Instagram account credentials
 
 ## 🚀 Quick Start
-
-### Option 1: Web Application (Recommended)
-
-1. **Clone the repository:**
-```bash
-git clone https://github.com/akl773/instagramFollowers.git
-cd instagramFollowers
-```
-
-2. **Run the setup script:**
-```bash
-chmod +x setup.sh start.sh
-./setup.sh
-```
-
-3. **Update the `.env` file with your Instagram credentials:**
-```env
-INSTAGRAM_USERNAME=your_instagram_username
-INSTAGRAM_PASSWORD=your_instagram_password
-MONGO_URI=mongodb://localhost:27017
-DATABASE_NAME=InstagramStat
-```
-
-4. **Start the application:**
-```bash
-./start.sh
-```
-
-5. **Access the web application:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5001
-
-### Option 2: Command-Line Tool
 
 1. **Clone and setup:**
 ```bash
@@ -99,73 +56,23 @@ PRINT_QUERY_TIME=false
 python main.py
 ```
 
-## 📊 Web Application Features
-
-### Dashboard
-- Real-time follower and following statistics
-- Quick report generation
-- Recent changes analysis
-- User overview with profile pictures
-- Relationship breakdown visualization
-
-### Reports
-- Historical data viewing
-- Detailed analysis with expandable sections
-- Change tracking between reports
-- Sortable and filterable user lists
-
-### Not Following Back
-- Grid layout with user cards
-- Direct Instagram profile links
-- Exception handling for specific users
-- Empty state handling
-
-### Analytics
-- Growth trend charts
-- Relationship distribution pie charts
-- Net changes bar charts
-- Summary statistics
-- Interactive data visualizations
-
-## 🔌 API Endpoints
-
-The web application provides a REST API:
-
-- `GET /api/health` - Health check
-- `GET /api/followers` - Get followers list
-- `GET /api/following` - Get following list
-- `GET /api/reports` - Get historical reports
-- `GET /api/reports/latest` - Get latest report
-- `POST /api/reports/generate` - Generate new report
-- `GET /api/not-following-back` - Get users not following back
-- `GET /api/user/<user_id>` - Get detailed user information
-
 ## 📁 Project Structure
 
 ```
 instagramFollowers/
 ├── main.py                 # Command-line application entry point
-├── app.py                  # Flask web application
 ├── db_manager.py           # MongoDB connection and management
 ├── models/                 # Data models
 │   ├── base.py            # Base model with MongoDB operations
 │   ├── report.py          # Report model for daily statistics
-│   └── user.py            # User model for Instagram users
+│   ├── user.py            # User model for Instagram users
+│   └── user_profile_cache.py # User profile cache
 ├── utils/                  # Utility functions
 │   ├── decorators.py      # Query timing decorators
 │   └── time.py            # Time-related utilities
-├── frontend/              # React web application
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Application pages
-│   │   ├── services/      # API service functions
-│   │   └── types/         # TypeScript type definitions
-│   ├── package.json       # Frontend dependencies
-│   └── vite.config.ts     # Vite configuration
-├── session/               # Instagram session storage
-├── setup.sh              # Automated setup script
-├── start.sh              # Application startup script
-└── requirements.txt      # Python dependencies
+├── session/                # Instagram session storage
+├── setup.sh               # Automated setup script
+└── requirements.txt       # Python dependencies
 ```
 
 ## ⚙️ Configuration Options
@@ -194,40 +101,24 @@ DRY_RUN=true python main.py
 FORCE_RUN=true python main.py
 ```
 
-### Web Application
-1. Open http://localhost:3000 in your browser
-2. Navigate through the dashboard, reports, and analytics pages
-3. Generate new reports using the dashboard
-4. View detailed user information and relationship analysis
 
 ## 🔒 Security Notes
 
 - Instagram credentials are stored securely in environment variables
 - Session data is stored locally in the `session` directory
-- The web application uses CORS protection
 - No sensitive data is exposed in error messages
 
 ## 🛠️ Development
 
-### Backend Development
+To run the script in development mode:
+
 ```bash
-# Start Flask backend in debug mode
-python app.py
+python main.py
 ```
 
-### Frontend Development
+For testing with limited data (dry run):
 ```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+DRY_RUN=true python main.py
 ```
 
 ## 📈 Data Analysis Features
@@ -248,13 +139,6 @@ npm run build
 
 ## 🎨 User Interface
 
-### Web Application
-- **Modern Design** - Material-UI components with dark theme
-- **Responsive Layout** - Works on all device sizes
-- **Interactive Charts** - Recharts and Material-UI X Charts
-- **Real-time Updates** - Live data fetching and display
-- **Loading States** - Smooth user experience
-
 ### Command-Line Interface
 - **Color-coded Output** - Easy-to-read terminal interface
 - **Progress Indicators** - Real-time status updates
@@ -266,7 +150,7 @@ npm run build
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test both command-line and web interfaces
+4. Test the command-line interface
 5. Submit a pull request
 
 ## 📄 License
@@ -284,15 +168,14 @@ If you encounter any issues:
 ## 🚀 Deployment
 
 ### Local Development
-- Use `./start.sh` for local development
-- Both servers run on localhost with hot reload
+- Run `python main.py` for local testing
+- Use `DRY_RUN=true` for limited data testing
 
-### Production Deployment
-- Build the frontend: `cd frontend && npm run build`
-- Configure production environment variables
-- Use a production WSGI server for Flask
-- Set up proper MongoDB security
+### Production Usage
+- Set up MongoDB (local or cloud)
+- Configure environment variables securely
+- Schedule the script to run daily using cron
 
 ---
 
-**Transform your Instagram analytics from command-line to a beautiful web experience! 🎉📊**
+**Analyze your Instagram followers and following with this powerful command-line tool! 🎉📊**

@@ -216,7 +216,7 @@ class Base:
 
     @classmethod
     @time_query
-    def insert_many(cls, documents: list[dict]) -> list:
+    def insert_many(cls, documents: list[dict]) -> InsertOneResult:
         if not documents:
             print("No documents provided for insert_many")
             return []
