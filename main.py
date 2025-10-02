@@ -209,7 +209,12 @@ class InstagramFollower:
                 for i, uid in enumerate(lst[:5], 1):
                     user = (report if 'new' in key else last).get_user_by_id(uid)
                     if user:
-                        content.append(f"  {i}. @{user.get('username', 'unknown')} ({user.get('full_name', '')})")
+                        username = user.get('username', 'unknown')
+                        full_name = user.get('full_name', '').strip()
+                        if full_name:
+                            content.append(f"  {i}. @{username} ({full_name})")
+                        else:
+                            content.append(f"  {i}. @{username}")
                 if len(lst) > 5:
                     content.append(f"  ... and {len(lst) - 5} more")
             else:
@@ -246,14 +251,24 @@ class InstagramFollower:
         print(f"{Fore.GREEN}✅ Analysis complete{Style.RESET_ALL}")
 
     @staticmethod
-    def _print_box(title: str, content: List[str], color=Fore.CYAN):
+    def _print_box(title: str, content: List[str], color=Fore.CYAN, max_width=90):
         """Print a formatted box with title and content."""
-        width = max(len(line) for line in content + [title]) + 6
+        # Calculate the maximum width needed
+        title_width = len(title)
+        content_width = max(len(line) for line in content) if content else 0
+        width = max(title_width + 6, content_width + 6, max_width)
+
         print(f"\n{color}┌{'─' * (width - 2)}┐{Style.RESET_ALL}")
         print(f"{color}│{title.center(width - 2)}│{Style.RESET_ALL}")
         print(f"{color}├{'─' * (width - 2)}┤{Style.RESET_ALL}")
         for line in content:
-            print(f"{color}│ {line}{' ' * (width - len(line) - 3)}│{Style.RESET_ALL}")
+            # Handle lines that might be longer than the box width
+            if len(line) > width - 6:
+                # Truncate very long lines
+                truncated_line = line[:width - 9] + "..."
+                print(f"{color}│ {truncated_line}{' ' * (width - len(truncated_line) - 3)}│{Style.RESET_ALL}")
+            else:
+                print(f"{color}│ {line}{' ' * (width - len(line) - 3)}│{Style.RESET_ALL}")
         print(f"{color}└{'─' * (width - 2)}┘{Style.RESET_ALL}")
 
     @staticmethod
