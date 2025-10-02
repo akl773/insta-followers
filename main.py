@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Union
 from colorama import init, Fore, Style
 from dotenv import load_dotenv
 from instagrapi import Client
+from instagrapi.exceptions import TwoFactorRequired
 from instagrapi.types import UserShort
 
 from models.report import Report
@@ -63,8 +64,18 @@ class InstagramFollower:
         sf.parent.mkdir(exist_ok=True)
 
         def do_login():
-            client.login(user, pwd)
-            client.dump_settings(sf)
+            try:
+                client.login(user, pwd)
+                client.dump_settings(sf)
+            except TwoFactorRequired:
+                print(f"{Fore.YELLOW}🔐 2FA required for @{user}{Style.RESET_ALL}")
+                verification_code = input("Enter 2FA code: ").strip()
+                if not verification_code:
+                    print(f"{Fore.RED}❌ No 2FA code provided{Style.RESET_ALL}")
+                    exit(1)
+                client.login(user, pwd, verification_code=verification_code)
+                client.dump_settings(sf)
+                print(f"{Fore.GREEN}✅ Login successful with 2FA{Style.RESET_ALL}")
 
         if sf.exists():
             print(f"{Fore.BLUE}🔑 Loading session for @{user}...{Style.RESET_ALL}")

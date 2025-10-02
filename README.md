@@ -86,6 +86,14 @@ instagramFollowers/
 - `FORCE_RUN` - Regenerate today's report even if it exists
 - `PRINT_QUERY_TIME` - Show MongoDB query execution times
 
+### Two-Factor Authentication (2FA)
+The script supports Instagram accounts with 2FA enabled. If 2FA is required:
+- The script will prompt you to enter the verification code
+- Enter the code from your authenticator app or SMS
+- The script will continue automatically after successful authentication
+
+**Note**: 2FA codes are not stored and must be entered interactively each time.
+
 ## 🎯 Usage Examples
 
 ### Command-Line Tool
