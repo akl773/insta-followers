@@ -206,7 +206,7 @@ class InstagramFollower:
             cnt = stats.get(key, 0)
             if cnt:
                 content.append(f"{color}{label}: {cnt}{Style.RESET_ALL}")
-                for i, uid in enumerate(lst[:5], 1):
+                for i, uid in enumerate(lst, 1):
                     user = (report if 'new' in key else last).get_user_by_id(uid)
                     if user:
                         username = user.get('username', 'unknown')
@@ -215,8 +215,6 @@ class InstagramFollower:
                             content.append(f"  {i}. @{username} ({full_name})")
                         else:
                             content.append(f"  {i}. @{username}")
-                if len(lst) > 5:
-                    content.append(f"  ... and {len(lst) - 5} more")
             else:
                 content.append(f"{Fore.YELLOW}{label}: 0{Style.RESET_ALL}")
         for net_key, label in [('net_follower_change', '📊 Net follower change'),
